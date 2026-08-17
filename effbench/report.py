@@ -206,6 +206,121 @@ def _equation_chip(rtps, pr, etps):
     )
 
 
+def _score_verdict(agg, fit_band, fit_class):
+    """The two sentences a non-technical user actually needs:
+
+    1. is this fast, for real hardware, on the comparable number?
+    2. is this accurate?
+    Decisive wording — every state says which side of the line it's on.
+    """
+    gen = agg.get("gen_tps_median") or 0
+    pr = agg.get("pass_rate") or 0
+    npass, n = agg.get("n_pass", 0), agg.get("n", 0)
+    if fit_band:
+        lo = fit_band[0]
+    else:
+        lo = None
+
+    # --- speed sentence: judged on generation-only, the tweet-comparable number
+    if lo and gen:
+        if gen >= lo:
+            speed = (f"<b>This is fast.</b> Generation speed {gen:.0f} tok/s sits at or "
+                     f"above the top of the typical band for this hardware class "
+                     f"({lo:.0f}+ tok/s).")
+        elif gen >= lo * 0.75:
+            speed = (f"<b>This is decent speed — close to typical.</b> Generation speed "
+                     f"{gen:.0f} tok/s is a little under the typical band "
+                     f"({lo:.0f}+ tok/s); tuning may recover it.")
+        else:
+            speed = (f"<b>Speed needs work.</b> Generation speed {gen:.0f} tok/s is well "
+                     f"under the typical band for this hardware class ({lo:.0f}+ tok/s). "
+                     f"Check background load, quant, or speculative-decode settings.")
+    else:
+        speed = ("<b>No comparison available yet</b> — no reference data for this "
+                 "hardware + model combination. Run again after changes to build "
+                 "your own baseline.")
+
+    # --- accuracy sentence
+    if n and npass == n:
+        acc_s = f"<b>This is accurate.</b> All {n} tasks passed — nothing discounted."
+    elif pr >= 0.9:
+        acc_s = (f"<b>This is accurate.</b> {npass} of {n} tasks passed "
+                 f"({pr*100:.0f}%).")
+    elif pr >= 0.7:
+        acc_s = (f"<b>Accuracy is mostly there.</b> {npass} of {n} tasks passed "
+                 f"({pr*100:.0f}%) — usable, with a fix target.")
+    else:
+        acc_s = (f"<b>Accuracy needs work.</b> Only {npass} of {n} tasks passed "
+                 f"({pr*100:.0f}%). Speed numbers at this accuracy flatter the setup.")
+
+    return f'<div class="score-verdict">{speed}<br>{acc_s}</div>'
+
+
+def _named_metrics(agg):
+    """PEAK / MEAN / EFFECTIVE as three named cards with basis labels.
+
+    Every number carries its basis so no figure is mistaken for another:
+    peak and mean are generation-only (tweet-comparable), effective is
+    wall-clock × pass.
+    """
+    peak = agg.get("gen_tps_peak") or agg.get("peak_tps") or 0
+    mean_gen = agg.get("gen_tps_median") or 0
+    etps = agg.get("eff_tps") or 0
+    rtps = agg.get("raw_tps") or 0
+    scale = max(peak, mean_gen, etps, rtps, 1)
+
+    def bar(w):
+        return max(2.0, (w / scale) * 100)
+
+    rows = []
+    if peak:
+        rows.append((
+            "PEAK SPEED",
+            f"{peak:.0f}",
+            "generation-only · best single task · the number in viral posts",
+            bar(peak), "peak",
+        ))
+    if mean_gen:
+        rows.append((
+            "MEAN SPEED",
+            f"{mean_gen:.0f}",
+            "generation-only · typical task · comparable to others' claims",
+            bar(mean_gen), "mean",
+        ))
+    rows.append((
+        "WALL SPEED",
+        f"{rtps:.0f}",
+        "end-to-end incl. prompt processing · the speed you feel",
+        bar(rtps), "wall",
+    ))
+    rows.append((
+        "EFFECTIVE SPEED",
+        f"{etps:.0f}",
+        "wall × pass rate · what you'd actually keep",
+        bar(etps), "eff",
+    ))
+
+    html_rows = "".join(
+        f'<div class="nm-row nm-{cls}">'
+        f'<div class="nm-name">{name}</div>'
+        f'<div class="nm-num">{val}<span class="nm-unit">tok/s</span></div>'
+        f'<div class="nm-basis">{basis}</div>'
+        f'<div class="nm-track"><div class="nm-fill nm-{cls}" '
+        f'style="width:{w:.1f}%"></div></div>'
+        f'</div>'
+        for name, val, basis, w, cls in rows
+    )
+    return (
+        f'<div class="nm-block">'
+        f'<div class="nm-title">Your speeds, named</div>'
+        f'{html_rows}'
+        f'<div class="nm-foot">all measured this run · one scale · '
+        f'peak & mean are generation-only (what speed posts quote); '
+        f'wall and effective include prompt processing</div>'
+        f'</div>'
+    )
+
+
 def _brag_line(rtps, pr, etps, gen, peak):
     """One sentence that reframes the number: accuracy is the multiplier you chose.
 
@@ -503,6 +618,41 @@ def _css():
               letter-spacing: 0.03em; justify-self: end; }}
     .tbadge.warn {{ background: rgba(251,191,36,0.12); color: {DARK['warn']}; }}
 
+    /* score verdict — the two sentences that answer "is this good?" */
+    .score-verdict {{ background: {DARK["panel"]}; border: 1px solid {DARK['hairline']};
+                     border-left: 3px solid {DARK['accent']}; border-radius: 10px;
+                     padding: 14px 18px; font-size: 14px; line-height: 1.65;
+                     color: {DARK["ink_dim"]}; margin: 18px 0 0 0; }}
+    .score-verdict b {{ color: {DARK['ink']}; }}
+
+    /* named metrics — PEAK / MEAN / WALL / EFFECTIVE */
+    .nm-block {{ margin-top: 18px; border: 1px solid {DARK['hairline']};
+                border-radius: 12px; padding: 16px 18px; background: {DARK["panel"]}; }}
+    .nm-title {{ font-family: {DARK['mono']}; font-size: 11px; letter-spacing: 0.12em;
+                text-transform: uppercase; color: {DARK['ink3']}; margin-bottom: 12px; }}
+    .nm-row {{ display: grid; grid-template-columns: 150px 84px 1fr; gap: 12px;
+              align-items: baseline; padding: 8px 0; border-bottom: 1px solid {DARK['track']}; }}
+    .nm-row:last-of-type {{ border-bottom: none; }}
+    .nm-name {{ font-family: {DARK['mono']}; font-size: 11px; letter-spacing: 0.08em;
+               color: {DARK["ink_dim"]}; }}
+    .nm-num {{ font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums;
+              color: {DARK['ink']}; }}
+    .nm-unit {{ font-family: {DARK['mono']}; font-size: 10px; color: {DARK['ink3']};
+               margin-left: 4px; font-weight: 400; }}
+    .nm-basis {{ font-size: 11.5px; color: {DARK['ink3']}; line-height: 1.45; }}
+    .nm-track {{ grid-column: 1 / -1; height: 5px; background: {DARK['track']};
+                border-radius: 3px; margin-top: 4px; overflow: hidden; }}
+    .nm-fill {{ height: 100%; border-radius: 3px; }}
+    .nm-fill.nm-peak {{ background: {DARK['ink3']}; }}
+    .nm-fill.nm-mean {{ background: {DARK['accent']}; }}
+    .nm-fill.nm-wall {{ background: rgba(154,166,181,0.45); }}
+    .nm-fill.nm-eff {{ background: {DARK['accent']}; }}
+    .nm-foot {{ font-family: {DARK['mono']}; font-size: 10.5px; color: {DARK['ink3']};
+               margin-top: 12px; line-height: 1.6; }}
+    @media (max-width: 640px) {{
+      .nm-row {{ grid-template-columns: 110px 74px 1fr; }}
+    }}
+
     @media (prefers-reduced-motion: reduce) {{
       * {{ transition: none !important; animation: none !important; }}
     }}
@@ -626,7 +776,11 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
     <h1>{_escape(title)}</h1>
     <p class="sub">pass rate {pr*100:.1f}% ({agg.get('n_pass', 0)} of {n}) · pass rate {pr*100:.1f}% · generated by effbench</p>
 
+    {_score_verdict(agg, fit_band, fit_class)}
+
     {_hero_cluster(agg, suite)}
+
+    {_named_metrics(agg)}
 
     {verdict_html}
     {src_note}

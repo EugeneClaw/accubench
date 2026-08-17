@@ -289,7 +289,7 @@
         <div class="lane unchecked">
           <div class="l-tag">Unchecked · also yours</div>
           <div class="l-num"><span id="lane-u-num">–</span><span class="u">tok/s</span></div>
-          <div class="l-cap">generation-only · best case · zero answers graded.<br>This is how the screenshots are made.</div>
+          <div class="l-cap">generation-only · best single task · zero answers graded.<br>This is the number viral posts quote.</div>
         </div>
       </div>
       <div class="confront-kicker">You own both numbers. Only one survives the follow-up question:
@@ -527,8 +527,9 @@ function renderVerdict(sm, fresh) {
         npass = sm.n_pass || 0;
   const suite = sm.suite || '–';
 
-  // verdict line — four states, zero sarcasm (copy deck)
+  // verdict — two decisive sentences: is it fast, is it accurate
   let head, sub;
+  const lo = sm.band ? sm.band[0] : null;
   if (pct === 100) {
     head = 'Flawless, at speed.';
     sub = `${eff} checked tok/s · ${npass}/${n} tasks · nothing discounted.`;
@@ -542,6 +543,19 @@ function renderVerdict(sm, fresh) {
   } else {
     head = 'Quick — but not trustworthy yet.';
     sub = `${eff} checked tok/s · ${100 - pct}% of speed spent on wrong answers · change model or quant before tuning anything else.`;
+  }
+  // speed sentence — judged on generation-only, the tweet-comparable number
+  if (lo && gen) {
+    if (gen >= lo) {
+      head = 'This is fast. ' + head;
+      sub += ` Generation ${Math.round(gen)} tok/s meets the top of the typical band for this hardware (${lo}+).`;
+    } else if (gen >= lo * 0.75) {
+      head = 'Decent speed — close to typical. ' + head;
+      sub += ` Generation ${Math.round(gen)} tok/s is a little under the typical band (${lo}+).`;
+    } else {
+      head = 'Speed needs work. ' + head;
+      sub += ` Generation ${Math.round(gen)} tok/s is well under the typical band (${lo}+).`;
+    }
   }
   document.getElementById('s-verdict').textContent = head;
   document.getElementById('s-verdict-sub').textContent = sub;

@@ -2,6 +2,14 @@
 
 All notable changes to effbench, newest first.
 
+## 0.7.1 — 2026-08-17
+
+Report and summary now answer "is this good?" directly.
+
+- **Verdict sentences** — both surfaces open with two plain statements: is this fast (judged on generation-only speed against the reference band for the hardware class) and is this accurate (pass rate). Wording is decisive: "This is fast." / "Decent speed — close to typical." / "Speed needs work." / "This is accurate." / "Accuracy needs work."
+- **Named speeds** — the report shows PEAK SPEED / MEAN SPEED / WALL SPEED / EFFECTIVE SPEED as labelled rows with basis notes (peak & mean are generation-only — the figures quoted in public speed posts; wall and effective include prompt processing). Removes ambiguity about which number is which.
+- Speed comparison now judges generation-only speed (comparable to external claims), not wall-clock, so cold-run prompt processing no longer reads as a slow server.
+
 ## 0.7.0 — 2026-08-17
 
 Post-run summary redesigned.

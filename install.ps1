@@ -74,6 +74,32 @@ if ($pathEnv -notlike "*$Bin*") {
   $env:PATH = "$env:PATH;$Bin"
 }
 
+# 6. Desktop + Start Menu shortcuts ("effbench" — double-click to start,
+#    close the window to stop; nothing runs in the background).
+$uiLauncher = Join-Path $Bin "effbench-ui.cmd"
+@"
+@echo off
+title effbench - close this window to stop
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+set "EFFBEN_SRC=$Src"
+set "PYTHONPATH=$Src;%PYTHONPATH%"
+$py -m effbench ui
+pause
+"@ | Out-File -Encoding ASCII $uiLauncher
+
+$WshShell = New-Object -ComObject WScript.Shell
+foreach ($shortcutHome in @([Environment]::GetFolderPath("Desktop"),
+                            (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"))) {
+  $lnk = Join-Path $shortcutHome "effbench.lnk"
+  $sc = $WshShell.CreateShortcut($lnk)
+  $sc.TargetPath = $uiLauncher
+  $sc.WorkingDirectory = $Bin
+  $sc.Description = "effbench — local AI benchmark (close window to stop)"
+  $sc.Save()
+}
+Write-Host "  OK shortcut: Desktop + Start Menu -> effbench"
+
 Write-Host ""
 Write-Host "  done. starting effbench..."
 Write-Host ""

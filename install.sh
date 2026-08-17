@@ -72,6 +72,54 @@ case ":$PATH:" in
     ;;
 esac
 
+# 6. Double-clickable app (macOS .app wrapper / Linux .desktop).
+#    Start = double-click. Stop = close the window. Nothing backgrounded.
+case "$(uname)" in
+  Darwin)
+    APP="$HOME/Applications/effbench.app"
+    mkdir -p "$APP/Contents/MacOS"
+    cat > "$APP/Contents/MacOS/effbench" <<EOF
+#!/usr/bin/env bash
+# effbench UI — close this window to stop.
+cd "\$HOME"
+export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
+export PYTHONPATH="$SRC\${PYTHONPATH:+:\$PYTHONPATH}"
+echo "effbench — close this window to stop"
+exec python3 -m effbench ui
+EOF
+    chmod +x "$APP/Contents/MacOS/effbench"
+    cat > "$APP/Contents/Info.plist" <<'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+ "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleName</key><string>effbench</string>
+  <key>CFBundleIdentifier</key><string>com.eugeneclaw.effbench</string>
+  <key>CFBundleExecutable</key><string>effbench</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleVersion</key><string>1</string>
+</dict>
+</plist>
+EOF
+    echo "  ✓ app: $APP (double-click to start; close window to stop)"
+    ;;
+  *)
+    if [ -d "$HOME/.local/share/applications" ]; then
+      cat > "$HOME/.local/share/applications/effbench.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=effbench
+Comment=Local AI benchmark — close window to stop
+Exec=$BIN/effbench ui
+Terminal=true
+Categories=Utility;
+EOF
+      echo "  ✓ menu entry: effbench (Terminal=true; close window to stop)"
+    fi
+    ;;
+esac
+
 echo ""
 echo "  installed. starting effbench..."
 echo ""

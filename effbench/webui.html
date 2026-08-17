@@ -6,138 +6,241 @@
 <title>effbench</title>
 <style>
   :root {
-    --bg: #0e1116; --panel: #161b23; --panel2: #1c2330;
-    --text: #e6e9ef; --dim: #8b93a3; --line: #262e3d;
-    --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #60a5fa;
+    --void:#07090D; --carbon:#0D1117; --graphite:#161C24; --hairline:#1F2733;
+    --ink:#E8EDF4; --ink2:#9AA6B5; --ink3:#5C6875; --track:#10151C;
+    --mint:#4FE3C1; --pass:#4ADE80; --warn:#FBBF24; --fail:#F87171;
+    --sans:-apple-system,'SF Pro Text','Segoe UI',system-ui,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
   }
   * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
   body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin:0; background:var(--void); color:var(--ink); font:14px/1.55 var(--sans);
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .3px; }
-  h1 .ver { color: var(--dim); font-weight: 400; font-size: 14px; }
-  .tagline { color: var(--dim); margin: 0 0 28px; font-size: 14px; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 34px 20px 90px; }
 
-  .card {
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 12px; padding: 20px; margin-bottom: 18px;
+  /* masthead */
+  .mast { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  .brand { font-size:20px; font-weight:600; letter-spacing:-0.01em; }
+  .brand em { font-style:normal; color:var(--mint); }
+  .brand .ver { color:var(--ink3); font-weight:400; font-size:12px; font-family:var(--mono); margin-left:8px; }
+  .mast-right { font-family:var(--mono); font-size:10px; color:var(--ink3); letter-spacing:0.08em; text-transform:uppercase; }
+  .mast-right b { color:var(--mint); font-weight:500; }
+  .tagline { color:var(--ink2); margin:0 0 26px; font-size:13px; }
+
+  .panel {
+    background:var(--carbon); border:1px solid var(--hairline);
+    border-radius:14px; padding:20px 22px; margin-bottom:18px;
   }
-  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .p-title { font-family:var(--mono); font-size:10px; text-transform:uppercase;
+             letter-spacing:0.1em; color:var(--ink3); margin-bottom:14px; }
+
+  /* buttons */
   .btn {
-    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    padding: 10px 18px; border-radius: 9px; cursor: pointer; font-size: 15px;
-    transition: all .15s;
+    background:var(--graphite); color:var(--ink); border:1px solid var(--hairline);
+    padding:10px 18px; border-radius:10px; cursor:pointer; font-size:14px;
+    transition:background-color .14s ease-out, border-color .14s ease-out;
   }
-  .btn:hover { border-color: var(--blue); }
-  .btn.primary { background: var(--blue); color: #0b1220; border-color: var(--blue); font-weight: 600; }
-  .btn.primary:hover { filter: brightness(1.1); }
-  .btn:disabled { opacity: .45; cursor: default; }
-  .btn small { display: block; font-size: 11px; font-weight: 400; opacity: .75; }
+  .btn:hover { border-color:var(--mint); }
+  .btn.primary { background:var(--mint); color:var(--void); border-color:var(--mint); font-weight:600; }
+  .btn.primary:hover { background:#6FE9CD; }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn:disabled:hover { border-color:var(--hairline); background:var(--graphite); }
+  .btn small { display:block; font-size:10.5px; font-weight:400; opacity:.7; font-family:var(--mono); }
 
-  .status { color: var(--dim); font-size: 14px; }
-  .bar {
-    height: 8px; background: var(--panel2); border-radius: 4px;
-    overflow: hidden; margin: 12px 0 4px;
+  .status { color:var(--ink2); font-size:13px; }
+  .status .pulse-dot { display:inline-block; width:7px; height:7px; border-radius:50%;
+                       background:var(--mint); margin-right:7px; vertical-align:1px;
+                       animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.35; transform:scale(.75);} }
+
+  /* ===== BUSY SYSTEM =====
+     a) busy: pulse dot + segmented rail fills
+     b) not hung: the in-flight segment sweeps forever
+     c) attention: current task highlighted, elapsed ticking */
+  .rail { display:flex; gap:3px; margin:14px 0 8px; }
+  .seg { flex:1; height:6px; border-radius:3px; background:var(--track); position:relative; overflow:hidden; }
+  .seg.done { background:var(--mint); }
+  .seg.active { background:var(--graphite); }
+  .seg.active::after {
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, var(--mint), transparent);
+    transform:translateX(-100%);
+    animation:sweep 1.1s linear infinite;
   }
-  .bar > div { height: 100%; width: 0%; background: var(--blue); transition: width .3s; }
-  .counts { font-size: 12px; color: var(--dim); }
+  @keyframes sweep { to { transform:translateX(100%); } }
 
-  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
-  th { color: var(--dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
-  td.num, th.num { text-align: right; }
-  .pass { color: var(--green); font-weight: 600; }
-  .fail { color: var(--red); font-weight: 600; }
+  .counts { font-family:var(--mono); font-size:11px; color:var(--ink3);
+            display:flex; justify-content:space-between; letter-spacing:0.04em; }
+  .counts b { color:var(--ink2); font-weight:500; font-variant-numeric:tabular-nums; }
+  .cur-task { font-family:var(--mono); font-size:11.5px; color:var(--mint); margin-top:8px;
+              min-height:15px; }
+  .elapsed { font-variant-numeric:tabular-nums; }
 
-  .summary { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 6px; }
-  .summary .big { font-size: 26px; font-weight: 700; }
-  .summary .lbl { font-size: 12px; color: var(--dim); }
-  .fit-above { color: var(--green); } .fit-in { color: var(--blue); } .fit-below { color: var(--amber); }
+  /* live task rows */
+  .live-rows { margin-top:12px; }
+  .lrow { display:grid; grid-template-columns:24px 1fr 64px 52px; gap:10px; align-items:center;
+          padding:7px 10px; border-radius:8px; animation:arrive .16s ease-out; }
+  .lrow:nth-child(odd) { background:rgba(22,28,36,0.5); }
+  @keyframes arrive { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+  .lmark { width:17px; height:17px; border-radius:5px; display:inline-flex; align-items:center;
+           justify-content:center; font-size:10.5px; font-weight:700; }
+  .lmark.pass { background:rgba(74,222,128,0.12); color:var(--pass); }
+  .lmark.fail { background:rgba(248,113,113,0.12); color:var(--fail); }
+  .lname { font-family:var(--mono); font-size:11.5px; color:var(--ink); overflow:hidden;
+           text-overflow:ellipsis; white-space:nowrap; }
+  .ltps { font-family:var(--mono); font-size:11px; text-align:right; color:var(--ink2);
+          font-variant-numeric:tabular-nums; }
+  .lrun { font-family:var(--mono); font-size:10px; color:var(--ink3); text-align:right; }
+
+  /* summary — hero in miniature */
+  .cluster { display:grid; grid-template-columns:1.5fr 1fr; gap:1px; background:var(--hairline);
+             border:1px solid var(--hairline); border-radius:14px; overflow:hidden; margin-top:14px; }
+  .cluster > div { background:var(--carbon); padding:16px 18px 14px; }
+  .k-label { font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
+             letter-spacing:0.1em; color:var(--ink3); margin-bottom:8px; }
+  .k-num { font-size:40px; font-weight:600; letter-spacing:-0.03em; line-height:1;
+           font-variant-numeric:tabular-nums; text-shadow:0 0 24px rgba(79,227,193,0.18); }
+  .k-unit { font-family:var(--mono); font-size:11px; color:var(--ink3); }
+  .k-sub { font-family:var(--mono); font-size:10.5px; color:var(--ink2); margin-top:10px;
+           font-variant-numeric:tabular-nums; }
+  .k-sub .sep { color:var(--ink3); margin:0 6px; }
+  .k-sub b { color:var(--mint); font-weight:500; }
+  .arc-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .arc-num { font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .arc-lbl { font-family:var(--mono); font-size:9.5px; color:var(--ink3); margin-top:4px; letter-spacing:0.1em; }
+
+  /* past runs */
+  .runrow { display:grid; grid-template-columns:96px 1fr 64px 56px 60px; gap:10px; align-items:center;
+            padding:8px 10px; border-radius:8px; font-size:12.5px; }
+  .runrow:hover { background:var(--graphite); }
+  .runrow:nth-child(odd) { background:rgba(22,28,36,0.5); }
+  .runrow:hover:nth-child(odd) { background:var(--graphite); }
+  .rr-when { font-family:var(--mono); font-size:10.5px; color:var(--ink3); }
+  .rr-tag { font-family:var(--mono); font-size:11px; color:var(--ink); overflow:hidden;
+            text-overflow:ellipsis; white-space:nowrap; }
+  .rr-num { font-family:var(--mono); font-size:11px; text-align:right; color:var(--ink2);
+            font-variant-numeric:tabular-nums; }
+  .rr-link { font-family:var(--mono); font-size:10.5px; text-align:right; }
+  .rr-link a { color:var(--mint); text-decoration:none; }
+  .runrow.head { color:var(--ink3); font-family:var(--mono); font-size:9.5px; text-transform:uppercase;
+                 letter-spacing:0.08em; }
+  .runrow.head:hover { background:transparent; }
+
+  /* empty / first-run state */
+  .empty { text-align:center; padding:34px 20px 30px; }
+  .empty .glyph { font-size:34px; margin-bottom:10px; opacity:.9; }
+  .empty .t { font-weight:600; font-size:15px; margin-bottom:6px; }
+  .empty .d { color:var(--ink2); font-size:13px; max-width:400px; margin:0 auto 16px; }
 
   select, input[type=text] {
-    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
-    border-radius: 8px; padding: 8px 10px; font-size: 14px; max-width: 100%;
+    background:var(--graphite); color:var(--ink); border:1px solid var(--hairline);
+    border-radius:8px; padding:8px 10px; font-size:13.5px; max-width:100%;
+    font-family:var(--sans);
   }
-  select { min-width: 260px; }
-  label { font-size: 13px; color: var(--dim); display: block; margin-bottom: 4px; }
-  .field { margin-bottom: 16px; }
-  .hint { font-size: 12.5px; color: var(--dim); margin-top: 4px; }
+  select { min-width:240px; }
+  select:focus, input:focus { outline:none; border-color:var(--mint); }
+  label { font-family:var(--mono); font-size:10px; color:var(--ink3); display:block;
+          margin-bottom:5px; text-transform:uppercase; letter-spacing:0.08em; }
+  .field { margin-bottom:14px; }
+  .hint { font-size:12px; color:var(--ink3); margin-top:4px; }
 
-  .err { color: var(--red); }
-  a { color: var(--blue); }
-  .muted { color: var(--dim); font-size: 13px; }
-  iframe { width: 100%; height: 78vh; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+  .err { color:var(--fail); }
+  a { color:var(--mint); }
+  .muted { color:var(--ink3); font-size:12px; }
+  iframe { width:100%; height:78vh; border:1px solid var(--hairline); border-radius:12px;
+           background:var(--void); }
+
+  .cmp-row { display:flex; gap:12px; align-items:flex-end; margin-bottom:14px; flex-wrap:wrap; }
+  .cmp-row .field { margin:0; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation:none !important; transition:none !important; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>effbench <span class="ver" id="ver"></span></h1>
+  <div class="mast">
+    <div class="brand">eff<em>bench</em> <span class="ver" id="ver"></span></div>
+    <div class="mast-right" id="mast-status">local only</div>
+  </div>
   <p class="tagline">how fast — and how accurate — is your local AI?</p>
 
   <!-- RUN -->
-  <div class="card" id="run-card">
-    <div class="row" style="justify-content:space-between; align-items:center;">
-      <div>
-        <div style="font-weight:600; font-size:16px;">Run a benchmark</div>
-        <div class="status" id="run-status">pick a benchmark to start</div>
-      </div>
-      <div class="row">
+  <div class="panel">
+    <div class="p-title">Benchmark</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      <div class="status" id="run-status">pick a benchmark to start</div>
+      <div style="display:flex; gap:10px;">
         <button class="btn primary" id="btn-quick" onclick="startRun('quick')">
-          Quick benchmark <small>~15 seconds</small>
+          Quick <small>~15 seconds</small>
         </button>
         <button class="btn" id="btn-full" onclick="startRun('full')">
-          Full benchmark <small>2–4 minutes</small>
+          Full <small>2–4 minutes</small>
         </button>
       </div>
     </div>
+
     <div id="progress" style="display:none">
-      <div class="bar"><div id="bar-fill"></div></div>
-      <div class="counts"><span id="counts"></span> · <span id="cur-task"></span></div>
-      <table id="live-table" style="margin-top:12px;">
-        <thead><tr><th>task</th><th class="num">result</th><th class="num">tok/s</th></tr></thead>
-        <tbody id="live-body"></tbody>
-      </table>
-    </div>
-    <div id="summary" style="display:none">
-      <div class="summary">
-        <div><div class="big" id="s-tps">–</div><div class="lbl">tokens / second</div></div>
-        <div><div class="big" id="s-acc">–</div><div class="lbl">tasks right</div></div>
-        <div><div class="big" id="s-eff">–</div><div class="lbl">effective t/s</div></div>
-        <div><div class="big" style="font-size:16px; margin-top:8px;" id="s-fit">–</div><div class="lbl">vs similar hardware</div></div>
+      <div class="rail" id="rail"></div>
+      <div class="counts">
+        <span><b id="counts">0 / 0</b> tasks</span>
+        <span class="elapsed" id="elapsed">0:00</span>
       </div>
-      <div style="margin-top:16px;">
+      <div class="cur-task" id="cur-task"></div>
+      <div class="live-rows" id="live-body"></div>
+    </div>
+
+    <div id="summary" style="display:none">
+      <div class="cluster">
+        <div>
+          <div class="k-label">Effective speed · raw × pass rate</div>
+          <div style="display:flex; align-items:baseline; gap:8px;">
+            <span class="k-num" id="s-eff">–</span><span class="k-unit">tok/s</span>
+          </div>
+          <div class="k-sub" id="s-sub"></div>
+        </div>
+        <div class="arc-wrap">
+          <div class="arc-num" id="s-acc">–</div>
+          <div class="arc-lbl" id="s-acc-lbl">tasks right</div>
+        </div>
+      </div>
+      <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <button class="btn" onclick="openReport()">Open full report</button>
+        <span class="status" id="s-fit"></span>
       </div>
     </div>
   </div>
 
   <!-- PAST RUNS -->
-  <div class="card">
-    <div style="font-weight:600; font-size:16px; margin-bottom:12px;">Past runs</div>
-    <div class="row" style="align-items:flex-end; margin-bottom:12px;">
-      <div class="field" style="margin:0;">
-        <label>newer run</label>
-        <select id="cmp-a" onchange="refreshCompareHint()"></select>
-      </div>
-      <div class="field" style="margin:0;">
-        <label>older run</label>
-        <select id="cmp-b" onchange="refreshCompareHint()"></select>
-      </div>
-      <button class="btn" onclick="doCompare()">Compare</button>
+  <div class="panel">
+    <div class="p-title">Past runs</div>
+    <div id="first-run" style="display:none" class="empty">
+      <div class="glyph">◉</div>
+      <div class="t">No runs yet</div>
+      <div class="d">Run the quick benchmark above — about fifteen seconds — and this panel fills with your history, ready to compare.</div>
     </div>
-    <div id="tags-table-wrap">
-      <table>
-        <thead><tr><th>when</th><th>run</th><th class="num">tok/s</th><th class="num">% right</th><th></th></tr></thead>
-        <tbody id="tags-body"><tr><td colspan="5" class="muted">loading…</td></tr></tbody>
-      </table>
+    <div id="cmp-ui">
+      <div class="cmp-row">
+        <div class="field">
+          <label>newer run</label>
+          <select id="cmp-a"></select>
+        </div>
+        <div class="field">
+          <label>older run</label>
+          <select id="cmp-b"></select>
+        </div>
+        <button class="btn" onclick="doCompare()">Compare</button>
+      </div>
+      <div id="tags-body"></div>
     </div>
   </div>
 
   <!-- SETTINGS -->
-  <div class="card">
-    <div style="font-weight:600; font-size:16px; margin-bottom:12px;">Settings</div>
+  <div class="panel">
+    <div class="p-title">Settings</div>
     <div class="field">
       <label>AI server URL</label>
       <input type="text" id="cfg-url" placeholder="http://localhost:11434" style="width:340px;">
@@ -167,24 +270,69 @@
 <script>
 let pollTimer = null;
 let lastTag = null;
+let runStartedAt = null;
+let tickTimer = null;
+let lastRowsLen = 0;
 
 async function api(path, opts) {
   const r = await fetch(path, opts);
   return r.json();
 }
 
-function setRunStatus(t) { document.getElementById('run-status').textContent = t; }
+function setRunStatus(t, pulse=false) {
+  document.getElementById('run-status').innerHTML =
+    (pulse ? '<span class="pulse-dot"></span>' : '') + t;
+}
+function setMast(t) { document.getElementById('mast-status').textContent = t; }
+
+function fmtElapsed(s) {
+  const m = Math.floor(s / 60);
+  return m + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+}
+
+function tick() {
+  if (runStartedAt === null) return;
+  document.getElementById('elapsed').textContent = fmtElapsed((Date.now() - runStartedAt) / 1000);
+}
+
+function buildRail(total) {
+  const rail = document.getElementById('rail');
+  const n = Math.min(total, 40);
+  rail.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'seg';
+    rail.appendChild(seg);
+  }
+}
+
+function paintRail(done, total) {
+  const segs = document.querySelectorAll('#rail .seg');
+  const per = total / segs.length;
+  segs.forEach((seg, i) => {
+    const covers = i * per;                 // first task index this segment covers
+    if (done > covers + per - 1e-9) seg.className = 'seg done';   // fully completed
+    else if (done >= covers) seg.className = 'seg active';        // in flight — sweeps
+    else seg.className = 'seg';
+  });
+}
 
 async function startRun(which) {
   const r = await api('/api/run', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({which})
   });
-  if (!r.started) { setRunStatus('a benchmark is already running — wait for it'); return; }
+  if (!r.started) { setRunStatus('a benchmark is already running — wait for it', true); return; }
   document.getElementById('progress').style.display = 'block';
   document.getElementById('summary').style.display = 'none';
   document.getElementById('live-body').innerHTML = '';
-  setRunStatus('running…');
+  lastRowsLen = 0;
+  runStartedAt = Date.now();
+  document.getElementById('elapsed').textContent = '0:00';
+  buildRail(0);
+  buildRail(which === 'quick' ? 12 : 36);
+  if (!tickTimer) tickTimer = setInterval(tick, 500);
+  setRunStatus('starting…', true);
   poll();
 }
 
@@ -198,46 +346,77 @@ function poll() {
 }
 
 function renderState(s) {
-  const pct = s.tasks_total ? Math.round(100 * s.tasks_done / s.tasks_total) : 0;
-  document.getElementById('bar-fill').style.width = pct + '%';
-  document.getElementById('counts').textContent =
-    s.tasks_done + ' / ' + (s.tasks_total || '?') + ' tasks';
-  document.getElementById('cur-task').textContent = s.current_task || '';
-
-  const body = document.getElementById('live-body');
-  body.innerHTML = (s.rows || []).map(r =>
-    `<tr><td>${r.task}</td>` +
-    `<td class="num ${r.pass ? 'pass' : 'fail'}">${r.pass ? 'pass' : (r.err ? 'error' : 'fail')}</td>` +
-    `<td class="num">${r.tok_s ? r.tok_s.toFixed(1) : '–'}</td></tr>`
-  ).join('');
-
   const busy = ['detecting', 'running', 'reporting'].includes(s.phase);
   document.getElementById('btn-quick').disabled = busy;
   document.getElementById('btn-full').disabled = busy;
+  setMast(busy ? 'running' : 'local only');
 
   if (s.phase === 'idle' && !s.summary) setRunStatus('pick a benchmark to start');
-  if (s.phase === 'detecting') setRunStatus('looking for your AI server…');
-  if (s.phase === 'running')
-    setRunStatus('running ' + (s.which === 'quick' ? 'quick' : 'full') + ' benchmark — ' + (s.model || ''));
-  if (s.phase === 'reporting') setRunStatus('building report…');
+
+  if (s.phase === 'detecting') {
+    setRunStatus('looking for your AI server…', true);
+    document.querySelectorAll('#rail .seg').forEach(seg => seg.className = 'seg active');
+    document.getElementById('counts').textContent = '· / ·';
+    document.getElementById('cur-task').textContent = '';
+  }
+
+  if (s.phase === 'running') {
+    setRunStatus('running ' + (s.which === 'quick' ? 'quick' : 'full') +
+                 ' benchmark — ' + (s.model || ''), true);
+    // rail sized from the real total (quick×3, full×runs change it)
+    const want = Math.min(s.tasks_total || 12, 40);
+    if (document.querySelectorAll('#rail .seg').length !== want) buildRail(want);
+    paintRail(s.tasks_done || 0, s.tasks_total || 1);
+    document.getElementById('counts').textContent =
+      (s.tasks_done || 0) + ' / ' + (s.tasks_total || '?');
+    document.getElementById('cur-task').textContent = s.current_task || '';
+
+    const rows = s.rows || [];
+    if (rows.length !== lastRowsLen) {
+      const body = document.getElementById('live-body');
+      body.innerHTML = rows.map(r =>
+        `<div class="lrow">` +
+        `<span class="lmark ${r.pass ? 'pass' : 'fail'}">${r.pass ? '✓' : '✗'}</span>` +
+        `<span class="lname">${r.task}</span>` +
+        `<span class="ltps">${r.tok_s ? r.tok_s.toFixed(1) : '–'}</span>` +
+        `<span class="lrun"></span></div>`
+      ).join('');
+      lastRowsLen = rows.length;
+    }
+  }
+
+  if (s.phase === 'reporting') {
+    setRunStatus('building report…', true);
+    document.querySelectorAll('#rail .seg').forEach(seg => seg.className = 'seg done');
+    document.getElementById('cur-task').textContent = '';
+  }
+
   if (s.phase === 'error') {
     setRunStatus('');
     document.getElementById('progress').style.display = 'none';
+    runStartedAt = null;
     alert('Benchmark failed: ' + (s.error || 'unknown error'));
   }
+
   if (s.phase === 'done' && s.summary) {
     const sm = s.summary;
     lastTag = sm.tag;
+    if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+    runStartedAt = null;
     document.getElementById('progress').style.display = 'none';
     document.getElementById('summary').style.display = 'block';
-    document.getElementById('s-tps').textContent = Math.round(sm.raw_tps);
-    document.getElementById('s-acc').textContent = Math.round(sm.pass_rate * 100) + '%';
     document.getElementById('s-eff').textContent = Math.round(sm.eff_tps);
+    document.getElementById('s-acc').textContent = Math.round(sm.pass_rate * 100) + '%';
+    document.getElementById('s-acc-lbl').textContent =
+      Math.round(sm.pass_rate * 100) + '% right';
+    document.getElementById('s-sub').innerHTML =
+      `wall <b>${Math.round(sm.raw_tps)}</b><span class="sep">·</span>` +
+      `suite ${sm.suite || '–'}`;
     const fitEl = document.getElementById('s-fit');
     const words = {above: 'faster than typical', in: 'typical', below: 'slower than typical'};
     fitEl.textContent = (words[sm.fit] || 'no reference data') +
       (sm.band ? ` (${sm.band[0]}–${sm.band[1]} tok/s)` : '');
-    fitEl.className = 'big fit-' + (sm.fit || 'in');
+    fitEl.style.color = sm.fit === 'below' ? 'var(--warn)' : 'var(--ink2)';
     setRunStatus('done — run ' + sm.tag);
     loadTags();
     if (s.config && s.config.open) window.open(sm.report, '_blank');
@@ -252,21 +431,33 @@ async function loadTags() {
   const r = await api('/api/tags');
   const tags = r.tags || [];
   const body = document.getElementById('tags-body');
-  body.innerHTML = tags.length ? tags.map(t =>
-    `<tr><td>${t.when}</td><td>${t.tag}</td>` +
-    `<td class="num">${t.tps ? t.tps.toFixed(0) : '–'}</td>` +
-    `<td class="num">${Math.round(t.pass * 100)}%</td>` +
-    `<td class="num"><a href="/report/${t.tag}.html" target="_blank">report</a></td></tr>`
-  ).join('') : '<tr><td colspan="5" class="muted">no runs yet — run a benchmark above</td></tr>';
+  const first = document.getElementById('first-run');
+  const cmp = document.getElementById('cmp-ui');
+  if (!tags.length) {
+    first.style.display = 'block';
+    cmp.style.display = 'none';
+    return;
+  }
+  first.style.display = 'none';
+  cmp.style.display = 'block';
+  body.innerHTML =
+    '<div class="runrow head"><span>when</span><span>run</span>' +
+    '<span class="rr-num">tok/s</span><span class="rr-num">% right</span><span></span></div>' +
+    tags.map(t =>
+      `<div class="runrow">` +
+      `<span class="rr-when">${t.when}</span>` +
+      `<span class="rr-tag">${t.tag}</span>` +
+      `<span class="rr-num">${t.tps ? t.tps.toFixed(0) : '–'}</span>` +
+      `<span class="rr-num">${Math.round(t.pass * 100)}%</span>` +
+      `<span class="rr-link"><a href="/report/${t.tag}.html" target="_blank">report →</a></span></div>`
+    ).join('');
 
   const a = document.getElementById('cmp-a'), b = document.getElementById('cmp-b');
-  a.innerHTML = b.innerHTML = tags.map((t, i) =>
+  a.innerHTML = b.innerHTML = tags.map(t =>
     `<option value="${t.tag}">${t.when} · ${t.tps ? t.tps.toFixed(0) : '–'} tok/s · ${Math.round(t.pass * 100)}%</option>`
   ).join('');
   if (tags.length >= 2) { a.selectedIndex = 0; b.selectedIndex = 1; }
 }
-
-function refreshCompareHint() {}
 
 async function doCompare() {
   const a = document.getElementById('cmp-a').value;

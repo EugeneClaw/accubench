@@ -144,14 +144,18 @@ def t_expected_pass():
 
 
 def t_radar_tested_axes():
-    from effbench.report import _radar
-    # purpose with tasks: axis drawn
-    svg = _radar({"code": {"n": 2, "pass_rate": 1.0}})
-    check("radar draws tested axis", ">code<" in svg)
-    check("radar notes untested", "Not tested" in svg and "chat" in svg)
-    # no purposes at all: graceful note, no svg axes
-    svg0 = _radar({})
-    check("radar empty graceful", "Not tested" in svg0 or "No purposes" in svg0)
+    from effbench.report import _purpose_ladder
+    # purpose with tasks: rung drawn, ranked, carries n
+    html = _purpose_ladder({"code": {"n": 15, "n_pass": 15, "pass_rate": 1.0},
+                            "extract": {"n": 3, "n_pass": 0, "pass_rate": 0.0}})
+    check("ladder draws tested rung", ">code<" in html and ">extract<" in html)
+    check("ladder carries counts", "15/15" in html and "0/3" in html)
+    check("ladder ranks by pass rate", html.index("code") < html.index("extract"))
+    check("ladder zero shows sliver", "width:1.5%" in html)
+    check("ladder notes untested", "not tested" in html and "chat" in html)
+    # no purposes at all: graceful note
+    html0 = _purpose_ladder({})
+    check("ladder empty graceful", "No purposes" in html0 or "not tested" in html0)
 
 
 def t_fail_hints():

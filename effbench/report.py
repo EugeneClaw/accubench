@@ -1,8 +1,8 @@
-"""Self-contained HTML report: inline SVG, dark theme, zero external assets.
+"""Self-contained HTML report: inline SVG, instrument theme, zero external assets.
 
 Three views:
-- run view (one recipe) — number, per-purpose radar, per-task table, hardware-fit verdict
-- compare view (two recipes) — side-by-side, per-task deltas, headline winners
+- run view (one recipe) — hero cluster, purpose ladder, per-task rows, verdict
+- compare view (two recipes) — side-by-side, dumbbell deltas, per-task rows
 """
 import html
 import json
@@ -15,18 +15,14 @@ from .explainer import (for_task, fail_hint, PURPOSE_DESCRIPTIONS,
                         DIFFICULTY_DESCRIPTIONS)
 from .ledger import aggregate, suite_of
 from .expectations import classify_fit, hw_class_blurb
+from . import tokens as T
 
 DARK = {
-    "bg": "#0f1216",
-    "panel": "#1a1f26",
-    "panel2": "#22272e",
-    "ink": "#e6e9ef",
-    "ink_dim": "#8a93a0",
-    "accent": "#4dd2c0",
-    "good": "#5dd576",
-    "warn": "#f0b94e",
-    "bad": "#e26a6a",
-    "rule": "#2a3138",
+    "bg": T.VOID, "panel": T.CARBON, "panel2": T.GRAPHITE, "graphite": T.GRAPHITE,
+    "ink": T.INK, "ink_dim": T.INK2, "accent": T.MINT,
+    "good": T.PASS, "warn": T.WARN, "bad": T.FAIL,
+    "rule": T.HAIRLINE, "hairline": T.HAIRLINE, "ink3": T.INK3, "track": T.INK_TRACK,
+    "sans": T.SANS, "mono": T.MONO,
 }
 
 _EXPECTED = None
@@ -68,81 +64,128 @@ def _bar(value, vmax, color=None):
     )
 
 
-def _radar(by_purpose, size=240):
-    """Radar chart of pass rate by purpose.
+def _purpose_ladder(by_purpose, width=520):
+    """Ranked pass-rate ladder, one rung per tested purpose.
 
-    Tested axes only: purposes that actually have tasks get an axis. Purposes
-    with no tasks in the suite are listed underneath as 'not tested' — a
-    missing axis is 'we never asked', never 'the model scored zero'.
+    Tested rungs only: purposes that actually have tasks get a rung, ranked
+    by pass rate then n. Purposes with no tasks in the suite are listed
+    underneath as 'not tested' — a missing rung is 'we never asked', never
+    'the model scored zero'. Rungs carry n so a 100% of 3 tasks can't
+    masquerade as a 100% of 15.
     """
     tested = {p: s for p, s in by_purpose.items() if s.get("n")}
     untested = [p for p in PURPOSE_DESCRIPTIONS if p not in tested]
-    purposes = [p for p in PURPOSE_DESCRIPTIONS if p in tested]
-    cos, sin = math.cos, math.sin
-    n = len(purposes)
-    if n == 0:
-        note = ("No purposes tested — " + ", ".join(untested) + " not tested."
-                if untested else "No purposes tested.")
-        return f'<div class="hint">{_escape(note)}</div>'
-    cx = cy = size / 2
-    r = size * 0.38
-    # axis rings
-    rings = ""
-    for level in (0.25, 0.5, 0.75, 1.0):
-        pts = []
-        for i in range(n):
-            a = (2 * math.pi * i / n) - math.pi / 2
-            x = cx + r * level * math.cos(a)
-            y = cy + r * level * math.sin(a)
-            pts.append(f"{x:.1f},{y:.1f}")
-        rings += f'<polygon points="{" ".join(pts)}" fill="none" stroke="{DARK["rule"]}" stroke-width="1"/>'
-    # data polygon
-    data_pts = []
-    labels = []
-    for i, p in enumerate(purposes):
-        a = (2 * math.pi * i / n) - math.pi / 2
-        v = tested[p].get("pass_rate", 0) or 0
-        x = cx + r * v * cos(a)
-        y = cy + r * v * sin(a)
-        data_pts.append(f"{x:.1f},{y:.1f}")
-        lx = cx + (r + 24) * cos(a)
-        ly = cy + (r + 18) * sin(a)
-        anchor = "middle"
-        if cos(a) > 0.3:
-            anchor = "start"
-        elif cos(a) < -0.3:
-            anchor = "end"
-        labels.append(
-            f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" '
-            f'fill="{DARK["ink_dim"]}" font-size="11">{_escape(p)}</text>'
+    rows = sorted(tested.items(),
+                  key=lambda kv: (-(kv[1].get("pass_rate") or 0), -kv[1].get("n", 0), kv[0]))
+    if not rows and not untested:
+        return '<div class="hint">No purposes tested.</div>'
+    parts = ['<div class="ladder">']
+    if rows:
+        total_n = sum(s.get("n", 0) for _, s in rows)
+        parts.append(
+            f'<div class="ladder-head"><span>pass rate by purpose</span>'
+            f'<span>{total_n} task-runs</span></div>'
         )
-        # dot at value
-        labels.append(
-            f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" fill="{DARK["accent"]}"/>'
+    for p, s in rows:
+        rate = s.get("pass_rate") or 0
+        npass, ntot = s.get("n_pass", 0), s.get("n", 0)
+        col = DARK["good"] if rate >= 0.5 else DARK["bad"]
+        w = max(rate * 100, 1.5)  # a zero still shows its sliver
+        parts.append(
+            f'<div class="ladder-row">'
+            f'<span class="ladder-name">{_escape(p)}</span>'
+            f'<div class="ladder-track"><div class="ladder-fill" '
+            f'style="width:{w:.1f}%;background:{col}"></div></div>'
+            f'<span class="ladder-val" style="color:{col}">'
+            f'{rate*100:.0f}% · {npass}/{ntot}</span>'
+            f'</div>'
         )
-    inner = (
-        rings
-        + f'<polygon points="{" ".join(data_pts)}" fill="{DARK["accent"]}" '
-          f'fill-opacity="0.18" stroke="{DARK["accent"]}" stroke-width="2"/>'
-        + "".join(labels)
-    )
-    svg = (
-        f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
-        f'style="display:block;margin:0 auto">{inner}</svg>'
-    )
     if untested:
-        note = "Not tested by this suite: " + ", ".join(untested) + "."
-        svg += f'<div class="hint" style="text-align:center">{_escape(note)}</div>'
-    return svg
+        parts.append(
+            f'<div class="ladder-miss">not tested in this suite — '
+            f'{_escape(" · ".join(untested))}</div>'
+        )
+    parts.append("</div>")
+    return "".join(parts)
 
 
-def _headline_card(label, value, sub="", color=None):
-    color = color or DARK["ink"]
+def _hero_cluster(agg, suite):
+    """The one composition: hero effective speed, supporting metrics, arc."""
+    etps = agg.get("eff_tps") or 0
+    rtps = agg.get("raw_tps") or 0
+    gen = agg.get("gen_tps_median") or 0
+    peak = agg.get("peak_tps") or 0
+    p10, p90 = agg.get("p10_tps"), agg.get("p90_tps")
+    n = agg.get("n", 0)
+    npass = agg.get("n_pass", 0)
+    pr = agg.get("pass_rate", 0) or 0
+    acc = agg.get("accept_pct_median") or 0
+
+    # mini-bar scale: everything shares one axis (max of observed values)
+    scale = max(rtps, gen, peak, 1)
+
+    def mb(label, value, color, text):
+        w = max(2.0, (value / scale) * 100)
+        return (
+            f'<div class="mb-row"><span>{label}</span>'
+            f'<div class="mb-track"><div class="mb-fill" '
+            f'style="width:{w:.1f}%;background:{color}"></div></div>'
+            f'<span class="mb-val">{text}</span></div>'
+        )
+
+    bars = mb("wall", rtps, DARK["ink_dim"], f"{rtps:.0f}")
+    if gen:
+        bars += mb("gen", gen, DARK["accent"], f"{gen:.0f}")
+    if peak:
+        bars += mb("peak", peak, DARK["ink3"], f"{peak:.0f}")
+
+    sub_bits = [f"wall {rtps:.1f}"]
+    if gen:
+        sub_bits.append(f'gen-only <b>{gen:.1f}</b>')
+    if peak:
+        sub_bits.append(f"peak {peak:.1f}")
+    if p10 is not None and p90 is not None:
+        sub_bits.append(f"p10–p90 {p10:.0f}–{p90:.0f}")
+    sub = ('<span class="sep">·</span>').join(sub_bits)
+
+    # pass-rate arc: 240° gauge
+    import math as _m
+    cx, cy, r = 60, 62, 46
+    a0, a1 = _m.radians(200), _m.radians(-20)
+    large = 0
+    x0, y0 = cx + r * _m.cos(a0), cy + r * _m.sin(a0)
+    x1, y1 = cx + r * _m.cos(a1), cy + r * _m.sin(a1)
+    track = f"M {x0:.1f} {y0:.1f} A {r} {r} 0 {large} 1 {x1:.1f} {y1:.1f}"
+    av = a0 + (a1 - a0) * min(max(pr, 0), 1)
+    xv, yv = cx + r * _m.cos(av), cy + r * _m.sin(av)
+    fillp = f"M {x0:.1f} {y0:.1f} A {r} {r} 0 {large} 1 {xv:.1f} {yv:.1f}"
+    arc_col = DARK["good"] if pr >= 0.8 else (DARK["warn"] if pr >= 0.5 else DARK["bad"])
+    arc = (
+        f'<svg width="120" height="76" viewBox="0 0 120 76">'
+        f'<path d="{track}" fill="none" stroke="{DARK["track"]}" stroke-width="7" stroke-linecap="round"/>'
+        f'<path d="{fillp}" fill="none" stroke="{arc_col}" stroke-width="7" stroke-linecap="round"/>'
+        f'<text x="60" y="56" text-anchor="middle" fill="{DARK["ink"]}" font-size="24" '
+        f'font-weight="600" font-family="system-ui,sans-serif">{pr*100:.0f}%</text>'
+        f'</svg>'
+    )
+    accept = (
+        f'<div class="accept-strip"><span>ACCEPT RATE</span>'
+        f'<b>{acc:.0f}%</b></div>'
+    ) if acc else ""
     return (
-        f'<div class="card">'
-        f'<div class="card-label">{_escape(label)}</div>'
-        f'<div class="card-value" style="color:{color}">{_escape(value)}</div>'
-        f'<div class="card-sub">{_escape(sub)}</div>'
+        f'<div class="cluster">'
+        f'<div>'
+        f'<div class="k-label">Effective speed · raw × pass rate</div>'
+        f'<div class="k-hero"><span class="k-num">{etps:.1f}</span>'
+        f'<span class="k-unit">tok/s</span></div>'
+        f'<div class="k-sub">{sub}</div>'
+        f'<div class="mini-bars">{bars}</div>'
+        f'</div>'
+        f'<div class="arc-wrap">'
+        f'{arc}'
+        f'<div class="arc-lbl">{npass} OF {n} PASS</div>'
+        f'{accept}'
+        f'</div>'
         f'</div>'
     )
 
@@ -240,68 +283,178 @@ def _band_chart(agg, band, klass, suite, width=520, height=120):
 
 
 def _task_row(r, show_tag=False):
-    check = "✓" if r.get("pass") else "✗"
-    color = DARK["good"] if r.get("pass") else DARK["bad"]
     purpose, difficulty, plain = for_task(r.get("task", ""))
     tok_s = r.get("tok_s") or 0
+    ok = bool(r.get("pass"))
     # expected-pass badge: what the reference rig did on this task
     exp = _expected_pass(r.get("task", ""))
     badge = ""
     if exp is False:
-        badge = ('<span class="tag dim" title="The reference rig '
+        badge = ('<span class="tbadge" title="The reference rig '
                  '(RTX 5090 + 27B IQ4_XS) also fails this task — a fail here '
                  'is normal, not a fault in your setup.">ref fails too</span>')
-    elif exp is True and not r.get("pass"):
-        badge = ('<span class="tag" style="color:' + DARK["warn"] + '" '
+    elif exp is True and not ok:
+        badge = ('<span class="tbadge warn" '
                  'title="The reference rig passes this task — this fail is '
                  'worth a look.">ref passes</span>')
-    hint = "" if r.get("pass") else fail_hint(purpose, difficulty)
+    meta_bits = [plain]
+    if not ok:
+        hint = fail_hint(purpose, difficulty)
+        if hint:
+            meta_bits.append(hint)
+    if r.get("err"):
+        meta_bits.append("server error")
+    badge_html = badge or '<span class="tbadge" style="visibility:hidden">·</span>'
     return (
-        f'<tr>'
-        f'<td><span class="chk" style="color:{color}">{check}</span></td>'
-        f'<td class="t">{_escape(r.get("task", ""))}</td>'
-        f'<td class="d">{_escape(plain)}</td>'
-        f'<td><span class="tag">{_escape(purpose)}</span></td>'
-        f'<td><span class="tag dim">{_escape(difficulty)}</span></td>'
-        f'<td class="num">{tok_s:.1f}</td>'
-        f'<td class="num">{(r.get("accept_pct") or 0):.0f}%</td>'
-        + (f'<td class="tag">{_escape(r.get("tag", ""))}</td>' if show_tag else "")
-        + '</tr>'
-        + (f'<tr class="failrow"><td></td><td colspan="7" class="hint">'
-           f'<b>Why it matters:</b> {_escape(hint)}</td></tr>' if hint else "")
-        + (f'<tr class="failrow"><td></td><td colspan="7" class="hint">{badge}</td></tr>' if badge else "")
+        f'<div class="trow">'
+        f'<span class="tmark {"pass" if ok else "fail"}">{"✓" if ok else "✗"}</span>'
+        f'<span class="tname">{_escape(r.get("task", ""))}</span>'
+        f'<span class="tmeta" title="{_escape(" — ".join(meta_bits))}">'
+        f'{_escape(" · ".join(meta_bits))}</span>'
+        f'<span class="ttps">{tok_s:.1f}</span>'
+        f'{badge_html}'
+        + (f'<span class="tag dim">{_escape(r.get("tag", ""))}</span>' if show_tag else "")
+        + '</div>'
     )
 
 
 def _css():
     return f"""
-    body {{ background: {DARK["bg"]}; color: {DARK["ink"]}; font-family: -apple-system, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 32px; line-height: 1.45; }}
+    body {{ background: {DARK['bg']}; color: {DARK['ink']};
+           font-family: {DARK['sans']}; margin: 0; padding: 36px 24px 72px;
+           line-height: 1.5; -webkit-font-smoothing: antialiased; }}
     .wrap {{ max-width: 1100px; margin: 0 auto; }}
-    h1 {{ font-size: 28px; margin: 0 0 8px; font-weight: 600; }}
-    h2 {{ font-size: 18px; margin: 32px 0 12px; font-weight: 600; color: {DARK["ink"]}; }}
-    .sub {{ color: {DARK["ink_dim"]}; margin: 0 0 24px; }}
-    .row {{ display: flex; gap: 16px; flex-wrap: wrap; }}
-    .card {{ background: {DARK["panel"]}; border-radius: 12px; padding: 16px 20px; flex: 1 1 180px; min-width: 160px; }}
-    .card-label {{ color: {DARK["ink_dim"]}; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }}
-    .card-value {{ font-size: 32px; font-weight: 600; }}
-    .card-sub {{ color: {DARK["ink_dim"]}; font-size: 12px; margin-top: 4px; }}
-    .panel {{ background: {DARK["panel"]}; border-radius: 12px; padding: 20px; margin: 16px 0; }}
+    h1 {{ font-size: 24px; margin: 0 0 6px; font-weight: 600; letter-spacing: -0.01em; }}
+    h2 {{ font-size: 17px; margin: 0 0 4px; font-weight: 600; color: {DARK['ink']}; }}
+    .sub {{ color: {DARK['ink_dim']}; margin: 0 0 0; font-size: 13.5px; }}
+    .eyebrow {{ font-family: {DARK['mono']}; font-size: 10.5px; text-transform: uppercase;
+               letter-spacing: 0.1em; color: {DARK['ink3']}; margin: 0 0 8px; }}
+    .row {{ display: flex; gap: 1px; flex-wrap: wrap; background: {DARK['hairline']};
+           border: 1px solid {DARK['hairline']}; border-radius: 14px; overflow: hidden; margin: 20px 0; }}
+    .row > * {{ flex: 1 1 180px; min-width: 160px; }}
+
+    /* hero cluster */
+    .cluster {{ display: grid; grid-template-columns: 1.6fr 1fr; gap: 1px;
+               background: {DARK['hairline']}; border: 1px solid {DARK['hairline']};
+               border-radius: 14px; overflow: hidden; margin: 20px 0; }}
+    .cluster > div {{ background: {DARK['panel']}; padding: 22px 24px 18px; }}
+    .k-label {{ font-family: {DARK['mono']}; font-size: 10px; text-transform: uppercase;
+               letter-spacing: 0.1em; color: {DARK['ink3']}; margin-bottom: 10px; }}
+    .k-hero {{ display: flex; align-items: baseline; gap: 10px; }}
+    .k-num {{ font-size: 56px; font-weight: 600; letter-spacing: -0.03em; line-height: 1;
+             font-variant-numeric: tabular-nums; color: {DARK['ink']};
+             text-shadow: 0 0 24px rgba(79,227,193,0.18); }}
+    .k-unit {{ font-family: {DARK['mono']}; font-size: 12px; color: {DARK['ink3']}; }}
+    .k-sub {{ font-family: {DARK['mono']}; font-size: 11.5px; color: {DARK['ink_dim']};
+             margin-top: 12px; font-variant-numeric: tabular-nums; }}
+    .k-sub .sep {{ color: {DARK['ink3']}; margin: 0 7px; }}
+    .k-sub b {{ color: {DARK['accent']}; font-weight: 500; }}
+    .mini-bars {{ margin-top: 14px; display: grid; gap: 8px; }}
+    .mb-row {{ display: grid; grid-template-columns: 42px 1fr 64px; gap: 10px; align-items: center;
+              font-family: {DARK['mono']}; font-size: 10px; color: {DARK['ink3']}; }}
+    .mb-track {{ height: 4px; background: {DARK['track']}; border-radius: 2px; position: relative; }}
+    .mb-fill {{ position: absolute; inset: 0 auto 0 0; border-radius: 2px; }}
+    .mb-val {{ text-align: right; color: {DARK['ink_dim']}; font-variant-numeric: tabular-nums; }}
+    .arc-wrap {{ display: flex; flex-direction: column; align-items: center;
+                justify-content: center; text-align: center; }}
+    .arc-num {{ font-size: 34px; font-weight: 600; letter-spacing: -0.02em;
+               font-variant-numeric: tabular-nums; }}
+    .arc-lbl {{ font-family: {DARK['mono']}; font-size: 10px; color: {DARK['ink3']};
+               margin-top: 6px; letter-spacing: 0.1em; }}
+    .accept-strip {{ margin-top: 16px; border-top: 1px solid {DARK['rule']}; padding-top: 12px;
+                    display: flex; justify-content: space-between; font-family: {DARK['mono']};
+                    font-size: 10px; color: {DARK['ink3']}; letter-spacing: 0.08em; }}
+    .accept-strip b {{ color: {DARK['ink_dim']}; font-weight: 500; font-variant-numeric: tabular-nums; }}
+
+    /* legacy headline cards (compare view) */
+    .card {{ background: {DARK['panel']}; padding: 16px 20px; }}
+    .card-label {{ color: {DARK['ink3']}; font-family: {DARK['mono']}; font-size: 10px;
+                  text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }}
+    .card-value {{ font-size: 30px; font-weight: 600; font-variant-numeric: tabular-nums; }}
+    .card-sub {{ color: {DARK['ink_dim']}; font-size: 12px; margin-top: 4px; }}
+
+    .panel {{ background: {DARK['panel']}; border: 1px solid {DARK['hairline']};
+             border-radius: 14px; padding: 20px 22px; margin: 20px 0; }}
     table {{ border-collapse: collapse; width: 100%; }}
-    th, td {{ padding: 8px 10px; text-align: left; border-bottom: 1px solid {DARK["rule"]}; }}
-    th {{ color: {DARK["ink_dim"]}; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }}
+    th, td {{ padding: 8px 10px; text-align: left; border-bottom: 1px solid {DARK['rule']}; }}
+    th {{ color: {DARK['ink3']}; font-family: {DARK['mono']}; font-size: 10px; font-weight: 500;
+         text-transform: uppercase; letter-spacing: 0.08em; }}
     td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
-    td.t {{ font-family: 'SF Mono', Menlo, monospace; font-size: 13px; }}
-    td.d {{ color: {DARK["ink_dim"]}; font-size: 13px; }}
-    .tag {{ display: inline-block; background: {DARK["panel2"]}; padding: 2px 8px; border-radius: 6px; font-size: 12px; }}
-    .tag.dim {{ color: {DARK["ink_dim"]}; }}
-    .chk {{ font-size: 16px; font-weight: 700; }}
-    .verdict {{ padding: 12px 16px; border-radius: 8px; margin: 12px 0; }}
-    .verdict.good {{ background: rgba(93,213,118,0.10); color: {DARK["good"]}; }}
-    .verdict.warn {{ background: rgba(240,185,78,0.10); color: {DARK["warn"]}; }}
-    .verdict.bad  {{ background: rgba(226,106,106,0.10); color: {DARK["bad"]}; }}
-    .verdict.dim  {{ background: {DARK["panel2"]}; color: {DARK["ink_dim"]}; }}
-    a {{ color: {DARK["accent"]}; }}
-    .hint {{ color: {DARK["ink_dim"]}; font-size: 13px; margin-top: 6px; }}
+    td.t {{ font-family: {DARK['mono']}; font-size: 12px; }}
+    td.d {{ color: {DARK['ink_dim']}; font-size: 12.5px; }}
+    .tag {{ display: inline-block; background: {DARK['graphite']}; padding: 2px 8px;
+           border-radius: 5px; font-size: 11px; font-family: {DARK['mono']}; }}
+    .tag.dim {{ color: {DARK['ink3']}; }}
+    .chk {{ font-size: 14px; font-weight: 700; }}
+    .verdict {{ padding: 14px 18px; border-radius: 10px; margin: 14px 0; font-size: 14px; }}
+    .verdict.good {{ background: rgba(74,222,128,0.08); color: {DARK['good']};
+                    border-left: 2px solid {DARK['good']}; }}
+    .verdict.warn {{ background: rgba(251,191,36,0.07); color: {DARK['warn']};
+                    border-left: 2px solid {DARK['warn']}; }}
+    .verdict.bad  {{ background: rgba(248,113,113,0.07); color: {DARK['bad']};
+                    border-left: 2px solid {DARK['bad']}; }}
+    .verdict.dim  {{ background: {DARK['graphite']}; color: {DARK['ink_dim']};
+                    border-left: 2px solid {DARK['rule']}; }}
+    .verdict b {{ color: inherit; }}
+    a {{ color: {DARK['accent']}; }}
+    .hint {{ color: {DARK['ink_dim']}; font-size: 12.5px; margin-top: 6px; }}
+    .ladder {{ margin-top: 4px; }}
+    .ladder-head {{ display: flex; justify-content: space-between; font-family: {DARK['mono']};
+                   font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+                   color: {DARK['ink3']}; margin-bottom: 14px; }}
+    .ladder-row {{ display: grid; grid-template-columns: 86px 1fr 110px; gap: 12px;
+                  align-items: center; padding: 8px 0; border-bottom: 1px solid {DARK['rule']}; }}
+    .ladder-row:last-of-type {{ border-bottom: none; }}
+    .ladder-name {{ font-family: {DARK['mono']}; font-size: 11.5px; color: {DARK['ink_dim']}; }}
+    .ladder-track {{ height: 14px; background: {DARK['track']}; border-radius: 3px;
+                    position: relative; overflow: hidden; }}
+    .ladder-fill {{ position: absolute; inset: 0 auto 0 0; }}
+    .ladder-val {{ font-family: {DARK['mono']}; font-size: 11px; text-align: right;
+                  font-variant-numeric: tabular-nums; }}
+    .ladder-miss {{ font-family: {DARK['mono']}; font-size: 10.5px; color: {DARK['ink3']};
+                   padding-top: 12px; }}
+
+    /* dumbbell compare rows */
+    .db-row {{ display: grid; grid-template-columns: 92px 1fr 64px; gap: 12px; align-items: center;
+              padding: 9px 0; border-bottom: 1px solid {DARK['rule']}; }}
+    .db-row:last-of-type {{ border-bottom: none; }}
+    .db-name {{ font-family: {DARK['mono']}; font-size: 11px; color: {DARK['ink_dim']}; }}
+    .db-track {{ height: 16px; position: relative; }}
+    .db-line {{ position: absolute; top: 7px; height: 2px; border-radius: 1px; }}
+    .db-dot {{ position: absolute; top: 3px; width: 10px; height: 10px; border-radius: 50%;
+              border: 2px solid {DARK['panel']}; }}
+    .db-val {{ font-family: {DARK['mono']}; font-size: 11px; text-align: right;
+              font-variant-numeric: tabular-nums; }}
+    .db-legend {{ display: flex; gap: 16px; margin-top: 12px; font-family: {DARK['mono']};
+                 font-size: 10px; color: {DARK['ink3']}; }}
+    .db-legend i {{ display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+                   margin-right: 5px; }}
+
+    /* task metric rows */
+    .trow {{ display: grid; grid-template-columns: 26px 150px 1fr 64px 84px; gap: 10px;
+            align-items: center; padding: 9px 12px; border-radius: 8px; }}
+    .trow:hover {{ background: {DARK['graphite']}; }}
+    .tmark {{ width: 18px; height: 18px; border-radius: 5px; display: inline-flex;
+             align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }}
+    .tmark.pass {{ background: rgba(74,222,128,0.12); color: {DARK['good']}; }}
+    .tmark.fail {{ background: rgba(248,113,113,0.12); color: {DARK['bad']}; }}
+    .tname {{ font-family: {DARK['mono']}; font-size: 11.5px; color: {DARK['ink']}; }}
+    .tmeta {{ font-size: 11px; color: {DARK['ink3']}; overflow: hidden; text-overflow: ellipsis;
+             white-space: nowrap; }}
+    .ttps {{ font-family: {DARK['mono']}; font-size: 11.5px; text-align: right; color: {DARK['ink_dim']};
+            font-variant-numeric: tabular-nums; }}
+    .tbadge {{ font-family: {DARK['mono']}; font-size: 9.5px; text-align: center; border-radius: 4px;
+              padding: 2px 6px; background: rgba(154,166,181,0.10); color: {DARK['ink3']};
+              letter-spacing: 0.03em; justify-self: end; }}
+    .tbadge.warn {{ background: rgba(251,191,36,0.12); color: {DARK['warn']}; }}
+
+    @media (prefers-reduced-motion: reduce) {{
+      * {{ transition: none !important; animation: none !important; }}
+    }}
+    @media print {{
+      body {{ background: #fff; color: #111; }}
+      .wrap {{ max-width: 100%; }}
+    }}
     """
 
 
@@ -381,8 +534,8 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
             'reference comparison.</div>'
         )
 
-    # purpose radar
-    radar_svg = _radar(by_purpose)
+    # purpose ladder
+    ladder_html = _purpose_ladder(by_purpose)
 
     # purpose table
     purpose_rows = []
@@ -406,33 +559,23 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
             blurb = f'<div class="hint"><b>{_escape(hw_class)}:</b> {_escape(b)}</div>'
 
     # generation-only card when the server reported it
-    gen_card = ""
+    gen_note = ""
     if agg.get("gen_tps_median"):
-        gen_card = _headline_card(
-            "Generation-only", f"{agg['gen_tps_median']:.1f}",
-            "tok/s server-reported (excludes prompt processing)")
+        gen_note = (
+            f'<div class="hint">Generation-only speed (server-reported, excludes '
+            f'prompt processing): <b>{agg["gen_tps_median"]:.1f}</b> tok/s.</div>'
+        )
 
     body = f"""
+    <div class="eyebrow">effbench · {suite} suite · {n} task-runs</div>
     <h1>{_escape(title)}</h1>
-    <p class="sub">{n} tasks · pass rate {pr*100:.1f}% · {suite} suite · generated by effbench</p>
+    <p class="sub">pass rate {pr*100:.1f}% ({agg.get('n_pass', 0)} of {n}) · pass rate {pr*100:.1f}% · generated by effbench</p>
 
-    <div class="row">
-      {_headline_card("Pass rate", f"{pr*100:.1f}%", f"{agg.get('n_pass', 0)} of {n} tasks")}
-      {_headline_card("Median speed", f"{rtps:.1f}", "tok/s · the headline number")}
-      {_headline_card("Effective speed", f"{etps:.1f}", "median × pass rate")}
-    </div>
-
-    <div class="row">
-      {_headline_card("Mean", f"{agg.get('mean_tps') or 0:.1f}", "tok/s · all tasks")}
-      {_headline_card("Peak", f"{agg.get('peak_tps') or 0:.1f}", "tok/s · fastest task")}
-      {_headline_card("p10–p90", f"{agg.get('p10_tps') or 0:.0f}–{agg.get('p90_tps') or 0:.0f}", "tok/s · task spread")}
-      {_headline_card("Speculative decode", f"{(agg.get('accept_pct_median') or 0):.0f}%",
-                       "draft accept rate (0 if none)")}
-    </div>
-    {gen_card}
+    {_hero_cluster(agg, suite)}
 
     {verdict_html}
     {src_note}
+    {gen_note}
 
     <div class="panel">
       <h2>Speed vs typical</h2>
@@ -442,26 +585,21 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
 
     <div class="panel">
       <h2>What this model is good for</h2>
-      <p class="sub">Pass rate grouped by what the task is actually used for. The bigger the green area, the broader the model.</p>
-      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap">
-        {radar_svg}
-        <div style="flex:1;min-width:280px">
-          <table>
-            <tr><th>purpose</th><th>what it is</th><th class="num">pass</th><th class="num">rate</th><th class="num">tok/s</th></tr>
-            {"".join(purpose_rows)}
-          </table>
-        </div>
+      <p class="sub">Pass rate grouped by what the task is actually used for. The longer the green rung, the broader the model.</p>
+      {ladder_html}
+      <div style="margin-top:14px">
+        <table>
+          <tr><th>purpose</th><th>what it is</th><th class="num">pass</th><th class="num">rate</th><th class="num">tok/s</th></tr>
+          {"".join(purpose_rows)}
+        </table>
       </div>
       {blurb}
     </div>
 
     <div class="panel">
       <h2>Every task</h2>
-      <p class="sub">A green tick means the model's answer passed the deterministic check. A red ✗ gets a what-it-means note and a reference badge: <span class="tag dim">ref fails too</span> — the reference rig (RTX 5090 + 27B IQ4_XS) also fails this task, so a fail is expected here. <span class="tag" style="color:{DARK['warn']}">ref passes</span> — the reference rig passes it, so this fail is the interesting kind.</p>
-      <table>
-        <tr><th></th><th>task</th><th>what it asks</th><th>purpose</th><th>difficulty</th><th class="num">tok/s</th><th class="num">accept</th></tr>
-        {task_rows}
-      </table>
+      <p class="sub">A green tick means the model's answer passed the deterministic check. A red ✗ carries a what-it-means note (hover for detail) and a reference badge: <span class="tbadge">ref fails too</span> — the reference rig (RTX 5090 + 27B IQ4_XS) also fails this task, so a fail is expected here. <span class="tbadge warn">ref passes</span> — the reference rig passes it, so this fail is the interesting kind.</p>
+      {task_rows}
     </div>
 
     <p class="hint">Generated by effbench. Reproducible: <code>python3 -m effbench run --tag {tag} --suite &lt;suite&gt</code></p>
@@ -498,13 +636,47 @@ def render_compare_view(tag_a, recs_a, tag_b, recs_b,
             f'</div>'
         )
 
-    # overall deltas
-    def delta_arrow(a, b):
-        if a is None or b is None:
-            return "—"
-        d = b - a
-        sym = "▲" if d > 0 else ("▼" if d < 0 else "=")
-        return f"{d:+.1f} {sym}"
+    # dumbbell deltas: the distance between the dots is the finding
+    def _pct(a, b):
+        if not a:
+            return "—" if not b else "new"
+        d = ((b - a) / a) * 100
+        return f"{d:+.0f}%"
+
+    def dumbbell(label, a, b, fmt="{:.1f}"):
+        """One metric, two dots, the line between them."""
+        vmax = max(a or 0, b or 0, 1)
+        xa = 4 + ((a or 0) / vmax) * 92
+        xb = 4 + ((b or 0) / vmax) * 92
+        lo, hi = min(xa, xb), max(xa, xb)
+        gain = (b or 0) >= (a or 0)
+        col = DARK["accent"] if gain else DARK["bad"]
+        # direction indicator: b is the newer recipe, gains are mint
+        return (
+            f'<div class="db-row">'
+            f'<span class="db-name">{_escape(label)}</span>'
+            f'<div class="db-track">'
+            f'<div class="db-line" style="left:{lo:.1f}%;width:{max(hi-lo,1.5):.1f}%;background:{DARK["ink3"]}"></div>'
+            f'<div class="db-dot" style="left:calc({xa:.1f}% - 5px);background:{DARK["ink3"]}"></div>'
+            f'<div class="db-dot" style="left:calc({xb:.1f}% - 5px);background:{col}"></div>'
+            f'</div>'
+            f'<span class="db-val" style="color:{col}">{_pct(a, b)}</span>'
+            f'</div>'
+        )
+
+    dumbbells = "".join([
+        dumbbell("effective", A.get("eff_tps"), B.get("eff_tps")),
+        dumbbell("median wall", A.get("raw_tps"), B.get("raw_tps")),
+        dumbbell("gen-only", A.get("gen_tps_median"), B.get("gen_tps_median")),
+        dumbbell("pass rate", (A.get("pass_rate") or 0) * 100, (B.get("pass_rate") or 0) * 100),
+        dumbbell("accept", A.get("accept_pct_median"), B.get("accept_pct_median")),
+    ])
+    legend = (
+        f'<div class="db-legend">'
+        f'<span><i style="background:{DARK["ink3"]}"></i>{_escape(tag_a)} (older)</span>'
+        f'<span><i style="background:{DARK["accent"]}"></i>{_escape(tag_b)} (newer)</span>'
+        f'</div>'
+    )
 
     headers_row = (
         f'<tr>'
@@ -534,7 +706,7 @@ def render_compare_view(tag_a, recs_a, tag_b, recs_b,
             chka_color = DARK["bad"]
         else:
             chka, chkb = "✗", "✗"
-        d_tps = delta_arrow(ra.get("tok_s"), rb.get("tok_s"))
+        d_tps = _pct(ra.get("tok_s"), rb.get("tok_s"))
         d_pass = ""
         if pa is not None and pb is not None:
             d_pass = "+1" if pb and not pa else ("-1" if pa and not pb else "0")
@@ -556,18 +728,20 @@ def render_compare_view(tag_a, recs_a, tag_b, recs_b,
         )
 
     body = f"""
+    <div class="eyebrow">effbench · comparison</div>
     <h1>{_escape(title)}</h1>
     <p class="sub">{A.get("n", 0)} tasks · generated by effbench</p>
 
     <div class="row">
       {card(tag_a, A, band_a, class_a)}
       {card(tag_b, B, band_b, class_b)}
-      {_headline_card("Δ raw t/s", delta_arrow(A.get("raw_tps"), B.get("raw_tps")),
-                      "tokens per second change", color=DARK["accent"])}
-      {_headline_card("Δ pass rate",
-                      f"{(B.get('pass_rate', 0) - A.get('pass_rate', 0))*100:+.1f}%",
-                      "absolute percentage points",
-                      color=DARK["accent"] if (B.get('pass_rate', 0) >= A.get('pass_rate', 0)) else DARK["bad"])}
+    </div>
+
+    <div class="panel">
+      <h2>What changed</h2>
+      <p class="sub">Two dots per metric — <b>{_escape(tag_a)}</b> (grey, older) and <b>{_escape(tag_b)}</b> (mint, newer). The distance between them is the finding; the number on the right is the percent change.</p>
+      {dumbbells}
+      {legend}
     </div>
 
     <div class="panel">

@@ -140,7 +140,7 @@ this may be noise to our audience; tell us which.
   change measurements.
 - Every number must carry its provenance visibly. No invented reference data.
   If a suggestion needs data we don't have, say what to collect and how to
-  label it honestly meanwhile.
+  label it truthfully meanwhile.
 - Accessible: reduced-motion respected, contrast, tabular numerals for all
   changing digits.
 - Effective t/s stays the hero metric. The pass-rate × speed story is the

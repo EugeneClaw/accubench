@@ -172,12 +172,15 @@ def _hero_cluster(agg, suite):
         f'<div class="accept-strip"><span>ACCEPT RATE</span>'
         f'<b>{acc:.0f}%</b></div>'
     ) if acc else ""
+    eq = _equation_chip(rtps, pr, etps)
+    brag = _brag_line(rtps, pr, etps, gen, peak)
     return (
         f'<div class="cluster">'
         f'<div>'
         f'<div class="k-label">Effective speed · raw × pass rate</div>'
         f'<div class="k-hero"><span class="k-num">{etps:.1f}</span>'
         f'<span class="k-unit">tok/s</span></div>'
+        f'{eq}'
         f'<div class="k-sub">{sub}</div>'
         f'<div class="mini-bars">{bars}</div>'
         f'</div>'
@@ -187,7 +190,48 @@ def _hero_cluster(agg, suite):
         f'{accept}'
         f'</div>'
         f'</div>'
+        f'{brag}'
     )
+
+
+def _equation_chip(rtps, pr, etps):
+    """raw × accuracy = effective, spelled out so the number is self-explaining."""
+    return (
+        f'<div class="eq-chip"><b>{rtps:.0f}</b>'
+        f'<span class="eq-x">×</span>'
+        f'<b>{pr*100:.0f}%</b>'
+        f'<span class="eq-x">=</span>'
+        f'<b class="eq-res">{etps:.1f}</b>'
+        f'<span class="eq-unit">tok/s</span></div>'
+    )
+
+
+def _brag_line(rtps, pr, etps, gen, peak):
+    """One sentence that reframes the number: accuracy is the multiplier you chose.
+
+    The point (user's words): nobody should read their result as 'lower numbers'.
+    A model streaming 200 tok/s of wrong answers scores ~0 here.
+    """
+    if not etps:
+        return ""
+    # the trade they were offered, in plain English
+    if pr >= 0.85:
+        tone = ("Your model passes nearly everything it attempts — speed here "
+                "is speed you can trust.")
+    elif pr >= 0.6:
+        tone = ("Speed corrected for what's actually right — the number that "
+                "predicts how this model feels to use.")
+    else:
+        tone = ("Speed with mistakes subtracted — at this accuracy, faster "
+                "hardware mostly delivers wrong answers sooner.")
+    bits = [tone]
+    if gen and gen > rtps * 1.3:
+        bits.append(
+            f"Generation-only throughput is {gen:.0f} tok/s — the number other "
+            f"tools headline. We keep it, but we don't lead with it, because it "
+            f"pretends wrong answers are free."
+        )
+    return f'<div class="brag">{"".join(bits)}</div>'
 
 
 def _band_chart(agg, band, klass, suite, width=520, height=140):
@@ -399,6 +443,17 @@ def _css():
     a {{ color: {DARK['accent']}; }}
     .hint {{ color: {DARK['ink_dim']}; font-size: 12.5px; margin-top: 6px; }}
     .ladder {{ margin-top: 4px; }}
+    .eq-chip {{ display: inline-flex; align-items: baseline; gap: 7px;
+               margin-top: 10px; padding: 5px 12px; border-radius: 7px;
+               background: {DARK['graphite']}; border: 1px solid {DARK['rule']};
+               font-family: {DARK['mono']}; font-size: 13px; color: {DARK['ink_dim']}; }}
+    .eq-chip b {{ color: {DARK['ink']}; font-weight: 600; }}
+    .eq-x {{ color: {DARK['ink3']}; font-size: 11px; }}
+    .eq-res {{ color: {DARK['accent']}; }}
+    .eq-unit {{ color: {DARK['ink3']}; font-size: 10.5px; }}
+    .brag {{ margin-top: 14px; font-size: 13.5px; line-height: 1.55; color: {DARK['ink_dim']};
+            max-width: 620px; }}
+    .brag b {{ color: {DARK['ink']}; }}
     .ladder-head {{ display: flex; justify-content: space-between; font-family: {DARK['mono']};
                    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
                    color: {DARK['ink3']}; margin-bottom: 14px; }}
@@ -525,9 +580,9 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
                 f'{_escape(hw_class or "hardware")} + model combo.</div>'
             )
         if src:
-            shown = (("reference: " + src[len("measured: "):])
-                     if src.startswith("measured:") else ("band source: " + src))
-            src_note = f'<div class="hint">{_escape(shown)}</div>'
+            shown = ((f'band source — {src[len("measured: "):]}' if src.startswith("measured: ")
+                      else f"band source — {src}"))
+            src_note = f'<div class="hint">{_escape(shown)} · one rig\'s soak, not a crowd\'s average</div>'
     else:
         verdict_html = (
             '<div class="verdict dim">Could not detect hardware/model for '

@@ -95,6 +95,16 @@
   .lrun { font-family:var(--mono); font-size:10px; color:var(--ink3); text-align:right; }
 
   /* summary — hero in miniature */
+  .eq-chip { display:inline-flex; align-items:baseline; gap:6px; margin-top:8px;
+             padding:4px 10px; border-radius:7px; background:var(--graphite);
+             border:1px solid var(--hairline); font-family:var(--mono);
+             font-size:12.5px; color:var(--ink2); font-variant-numeric:tabular-nums; }
+  .eq-chip b { color:var(--ink); font-weight:600; }
+  .eq-chip .eq-x { color:var(--ink3); font-size:10.5px; }
+  .eq-chip .eq-res { color:var(--mint); }
+  .brag { margin-top:12px; font-size:13px; line-height:1.55; color:var(--ink2); max-width:640px; }
+  #s-best { animation: pop 0.5s ease-out; }
+  @keyframes pop { from { transform:scale(0.6); opacity:0; } to { transform:scale(1); opacity:1; } }
   .cluster { display:grid; grid-template-columns:1.5fr 1fr; gap:1px; background:var(--hairline);
              border:1px solid var(--hairline); border-radius:14px; overflow:hidden; margin-top:14px; }
   .cluster > div { background:var(--carbon); padding:16px 18px 14px; }
@@ -200,6 +210,7 @@
           <div style="display:flex; align-items:baseline; gap:8px;">
             <span class="k-num" id="s-eff">–</span><span class="k-unit">tok/s</span>
           </div>
+          <div class="eq-chip" id="s-eq" style="margin-top:8px;"></div>
           <div class="k-sub" id="s-sub"></div>
         </div>
         <div class="arc-wrap">
@@ -207,9 +218,11 @@
           <div class="arc-lbl" id="s-acc-lbl">tasks right</div>
         </div>
       </div>
+      <div class="brag" id="s-brag"></div>
       <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <button class="btn" onclick="openReport()">Open full report</button>
         <span class="status" id="s-fit"></span>
+        <span id="s-best" style="display:none" class="tbadge warn">★ new best</span>
       </div>
     </div>
   </div>
@@ -405,18 +418,63 @@ function renderState(s) {
     runStartedAt = null;
     document.getElementById('progress').style.display = 'none';
     document.getElementById('summary').style.display = 'block';
-    document.getElementById('s-eff').textContent = Math.round(sm.eff_tps);
-    document.getElementById('s-acc').textContent = Math.round(sm.pass_rate * 100) + '%';
-    document.getElementById('s-acc-lbl').textContent =
-      Math.round(sm.pass_rate * 100) + '% right';
+    // count-up: the number earns itself (respects reduced motion)
+    const eff = Math.round(sm.eff_tps), raw = Math.round(sm.raw_tps), pct = Math.round(sm.pass_rate * 100);
+    const el = document.getElementById('s-eff');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce || eff === 0) { el.textContent = eff; }
+    else {
+      const t0 = performance.now(), dur = 900;
+      (function tick(now) {
+        const k = Math.min(1, (now - t0) / dur);
+        el.textContent = Math.round(eff * (1 - Math.pow(1 - k, 3)));
+        if (k < 1) requestAnimationFrame(tick);
+      })(t0);
+    }
+    document.getElementById('s-eq').innerHTML =
+      `<b>${raw}</b><span class="eq-x">×</span><b>${pct}%</b>` +
+      `<span class="eq-x">=</span><b class="eq-res">${eff}</b>` +
+      `<span class="eq-x" style="font-size:9.5px">tok/s</span>`;
+    document.getElementById('s-acc').textContent = pct + '%';
+    document.getElementById('s-acc-lbl').textContent = pct + '% right';
     document.getElementById('s-sub').innerHTML =
-      `wall <b>${Math.round(sm.raw_tps)}</b><span class="sep">·</span>` +
+      `wall <b>${raw}</b><span class="sep">·</span>` +
+      (sm.gen_tps ? `gen <b>${Math.round(sm.gen_tps)}</b><span class="sep">·</span>` : '') +
       `suite ${sm.suite || '–'}`;
+    const bragEl = document.getElementById('s-brag');
+    if (pct >= 85) {
+      bragEl.innerHTML = `Speed you can trust — your model passed ${pct}% of everything it attempted. ` +
+        (sm.gen_tps && sm.gen_tps > sm.raw_tps * 1.3
+          ? `Others would headline the <b>${Math.round(sm.gen_tps)} tok/s</b> generation number; that one pretends wrong answers are free.`
+          : '');
+    } else if (pct >= 60) {
+      bragEl.innerHTML = 'Speed corrected for what is actually right — the number that predicts how this model feels to use.';
+    } else {
+      bragEl.innerHTML = 'Speed with mistakes subtracted — at this accuracy, faster hardware mostly delivers wrong answers sooner.';
+    }
     const fitEl = document.getElementById('s-fit');
     const words = {above: 'faster than typical', in: 'typical', below: 'slower than typical'};
-    fitEl.textContent = (words[sm.fit] || 'no reference data') +
-      (sm.band ? ` (${sm.band[0]}–${sm.band[1]} tok/s)` : '');
-    fitEl.style.color = sm.fit === 'below' ? 'var(--warn)' : 'var(--ink2)';
+    let fitTxt = (words[sm.fit] || 'no reference data') +
+      (sm.band ? ` (typical ${sm.band[0]}–${sm.band[1]})` : '');
+    // don't let a cold wall read as a slow rig: gen-only inside the band
+    // means the server is fine; wall includes prompt processing
+    let fitCol = sm.fit === 'below' ? 'var(--warn)' : 'var(--ink2)';
+    if (sm.fit === 'below' && sm.gen_tps && sm.band && sm.gen_tps >= sm.band[0]) {
+      fitTxt = `server in-band — gen-only ${Math.round(sm.gen_tps)} tok/s sits inside the typical band; wall is cold-run prompt processing`;
+      fitCol = 'var(--mint)';
+    }
+    fitEl.textContent = fitTxt;
+    fitEl.style.color = fitCol;
+    // new best? compare eff_tps against every past run of the same suite
+    const bestEl = document.getElementById('s-best');
+    bestEl.style.display = 'none';
+    api('/api/tags').then(r => {
+      const mine = (r.tags || []).filter(t => (t.suite || '') === (sm.suite || ''));
+      const prior = mine.filter(t => t.tag !== sm.tag);
+      if (prior.length && sm.eff_tps > Math.max(...prior.map(t => t.eff_tps))) {
+        bestEl.style.display = 'inline-block';
+      }
+    }).catch(() => {});
     setRunStatus('done — run ' + sm.tag);
     loadTags();
     if (s.config && s.config.open) window.open(sm.report, '_blank');

@@ -129,6 +129,7 @@ def _worker(which):
             "report": f"/report/{os.path.basename(out)}",
             "suite": suite,
             "raw_tps": round(rtps, 1),
+            "gen_tps": round(agg.get("gen_tps_median") or 0, 1),
             "pass_rate": agg.get("pass_rate") or 0,
             "eff_tps": round(agg.get("eff_tps") or rtps * (agg.get("pass_rate") or 0), 1),
             "hw_class": hwc,

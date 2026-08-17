@@ -2,6 +2,17 @@
 
 All notable changes to effbench, newest first.
 
+## 0.6.1 — 2026-08-17
+
+The effective-speed release — accuracy stops being a footnote and becomes part of the number itself.
+
+- **Equation chip** on report hero and run summary: `67 × 92% = 62 tok/s` — the number explains itself; nobody needs to know what a pass rate is to see accuracy multiplying speed.
+- **Brag line**: one plain-English sentence per run that celebrates the trade — "Speed you can trust… Others would headline the 143 tok/s generation number; that one pretends wrong answers are free."
+- **Dopamine moment**: the effective-speed number counts up on completion (900 ms, reduced-motion aware), and a `★ new best` badge pops when the run beats every prior run of the same suite.
+- **Fit line reframed**: a cold wall median no longer reads as "slower than typical" in amber — when gen-only sits inside the band, the UI says so in mint: "server in-band — gen-only 143 tok/s sits inside the typical band; wall is cold-run prompt processing".
+- **Band provenance** now ends "· one rig's soak, not a crowd's average" (v0.6.0 fixed the two-line overlap this way).
+- `/api/tags` exposes `eff_tps` + `suite` per run (powers new-best detection).
+
 ## 0.6.0 — 2026-08-17
 
 The instrument release — a full visual redesign of both surfaces, built on the design review (docs/design-review-v1.html). Presentation only: suites, prompts, graders, fixtures and ledger format are untouched, so every past ledger keeps rendering and every number stays comparable.

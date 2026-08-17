@@ -14,7 +14,7 @@ from . import __version__
 from . import config
 from . import wizard
 from .client import ServerClient
-from .ledger import load_ledger, aggregate
+from .ledger import load_ledger, aggregate, suite_of
 from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
                            lookup, classify_fit, fit_for)
@@ -159,6 +159,8 @@ def _tags_summary():
             "when": when.strftime("%Y-%m-%d %H:%M"),
             "pass": agg.get("pass_rate") or 0,
             "tps": agg.get("raw_tps") or 0,
+            "eff_tps": agg.get("eff_tps") or 0,
+            "suite": suite_of(bag),
         })
     out.sort(key=lambda x: x["when"], reverse=True)
     return out

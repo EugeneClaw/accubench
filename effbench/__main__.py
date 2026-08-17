@@ -188,7 +188,7 @@ def cmd_report(args):
         html_doc = render_report([(a, recs_a, band_a, klass_a, hwc),
                                   (b, recs_b, band_b, klass_b, hwc)],
                                  props=props, mode="compare")
-    with open(args.out, "w") as f:
+    with open(args.out, "w", encoding="utf-8") as f:
         f.write(html_doc)
     print(f"wrote {args.out}  ({len(recs)} records)")
     return 0
@@ -220,7 +220,7 @@ def cmd_compare(args):
         html_doc = render_report([(args.tag, recs_a, band_a, klass_a, hwc),
                                   (args.against, recs_b, band_b, klass_b, hwc)],
                                  props=props, mode="compare")
-        with open(args.out, "w") as f:
+        with open(args.out, "w", encoding="utf-8") as f:
             f.write(html_doc)
         print(f"wrote {args.out}")
     else:
@@ -385,6 +385,11 @@ def cmd_uninstall(args):
 
 
 def cmd_ui(args):
+    from . import webui
+    return webui.launch()
+
+
+def cmd_menu(args):
     from . import menu
     return menu.main_menu()
 
@@ -464,8 +469,11 @@ def build_parser():
     pu = sub.add_parser("uninstall", help="remove effbench (asks before deleting anything)")
     pu.set_defaults(func=cmd_uninstall)
 
-    pu2 = sub.add_parser("ui", help="open the interactive menu (same as bare `effbench`)")
+    pu2 = sub.add_parser("ui", help="open the browser UI (default when you type bare `effbench`)")
     pu2.set_defaults(func=cmd_ui)
+
+    pu3 = sub.add_parser("menu", help="terminal menu (fallback when no browser is available)")
+    pu3.set_defaults(func=cmd_menu)
 
     pv = sub.add_parser("validate", help="self-test every task grader")
     pv.add_argument("--suite", required=True)
@@ -475,12 +483,19 @@ def build_parser():
 
 
 def main():
+    # Windows consoles default to cp1252/cp437 — our output contains ✓/✗/·.
+    # Force UTF-8 with replacement so printing never crashes the run.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
     parser = build_parser()
     args = parser.parse_args()
     if not getattr(args, "cmd", None):
-        # bare `effbench` → the interactive menu
-        from . import menu
-        return menu.main_menu()
+        # bare `effbench` → browser UI
+        from . import webui
+        return webui.launch()
     return args.func(args)
 
 

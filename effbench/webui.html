@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>effbench</title>
+<style>
+  :root {
+    --bg: #0e1116; --panel: #161b23; --panel2: #1c2330;
+    --text: #e6e9ef; --dim: #8b93a3; --line: #262e3d;
+    --green: #34d399; --red: #f87171; --amber: #fbbf24; --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .3px; }
+  h1 .ver { color: var(--dim); font-weight: 400; font-size: 14px; }
+  .tagline { color: var(--dim); margin: 0 0 28px; font-size: 14px; }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 12px; padding: 20px; margin-bottom: 18px;
+  }
+  .row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    padding: 10px 18px; border-radius: 9px; cursor: pointer; font-size: 15px;
+    transition: all .15s;
+  }
+  .btn:hover { border-color: var(--blue); }
+  .btn.primary { background: var(--blue); color: #0b1220; border-color: var(--blue); font-weight: 600; }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn small { display: block; font-size: 11px; font-weight: 400; opacity: .75; }
+
+  .status { color: var(--dim); font-size: 14px; }
+  .bar {
+    height: 8px; background: var(--panel2); border-radius: 4px;
+    overflow: hidden; margin: 12px 0 4px;
+  }
+  .bar > div { height: 100%; width: 0%; background: var(--blue); transition: width .3s; }
+  .counts { font-size: 12px; color: var(--dim); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  td.num, th.num { text-align: right; }
+  .pass { color: var(--green); font-weight: 600; }
+  .fail { color: var(--red); font-weight: 600; }
+
+  .summary { display: flex; gap: 26px; flex-wrap: wrap; margin-top: 6px; }
+  .summary .big { font-size: 26px; font-weight: 700; }
+  .summary .lbl { font-size: 12px; color: var(--dim); }
+  .fit-above { color: var(--green); } .fit-in { color: var(--blue); } .fit-below { color: var(--amber); }
+
+  select, input[type=text] {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px; font-size: 14px; max-width: 100%;
+  }
+  select { min-width: 260px; }
+  label { font-size: 13px; color: var(--dim); display: block; margin-bottom: 4px; }
+  .field { margin-bottom: 16px; }
+  .hint { font-size: 12.5px; color: var(--dim); margin-top: 4px; }
+
+  .err { color: var(--red); }
+  a { color: var(--blue); }
+  .muted { color: var(--dim); font-size: 13px; }
+  iframe { width: 100%; height: 78vh; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>effbench <span class="ver" id="ver"></span></h1>
+  <p class="tagline">how fast — and how accurate — is your local AI?</p>
+
+  <!-- RUN -->
+  <div class="card" id="run-card">
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <div>
+        <div style="font-weight:600; font-size:16px;">Run a benchmark</div>
+        <div class="status" id="run-status">pick a benchmark to start</div>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="btn-quick" onclick="startRun('quick')">
+          Quick benchmark <small>~15 seconds</small>
+        </button>
+        <button class="btn" id="btn-full" onclick="startRun('full')">
+          Full benchmark <small>2–4 minutes</small>
+        </button>
+      </div>
+    </div>
+    <div id="progress" style="display:none">
+      <div class="bar"><div id="bar-fill"></div></div>
+      <div class="counts"><span id="counts"></span> · <span id="cur-task"></span></div>
+      <table id="live-table" style="margin-top:12px;">
+        <thead><tr><th>task</th><th class="num">result</th><th class="num">tok/s</th></tr></thead>
+        <tbody id="live-body"></tbody>
+      </table>
+    </div>
+    <div id="summary" style="display:none">
+      <div class="summary">
+        <div><div class="big" id="s-tps">–</div><div class="lbl">tokens / second</div></div>
+        <div><div class="big" id="s-acc">–</div><div class="lbl">tasks right</div></div>
+        <div><div class="big" id="s-eff">–</div><div class="lbl">effective t/s</div></div>
+        <div><div class="big" style="font-size:16px; margin-top:8px;" id="s-fit">–</div><div class="lbl">vs similar hardware</div></div>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn" onclick="openReport()">Open full report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAST RUNS -->
+  <div class="card">
+    <div style="font-weight:600; font-size:16px; margin-bottom:12px;">Past runs</div>
+    <div class="row" style="align-items:flex-end; margin-bottom:12px;">
+      <div class="field" style="margin:0;">
+        <label>newer run</label>
+        <select id="cmp-a" onchange="refreshCompareHint()"></select>
+      </div>
+      <div class="field" style="margin:0;">
+        <label>older run</label>
+        <select id="cmp-b" onchange="refreshCompareHint()"></select>
+      </div>
+      <button class="btn" onclick="doCompare()">Compare</button>
+    </div>
+    <div id="tags-table-wrap">
+      <table>
+        <thead><tr><th>when</th><th>run</th><th class="num">tok/s</th><th class="num">% right</th><th></th></tr></thead>
+        <tbody id="tags-body"><tr><td colspan="5" class="muted">loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="card">
+    <div style="font-weight:600; font-size:16px; margin-bottom:12px;">Settings</div>
+    <div class="field">
+      <label>AI server URL</label>
+      <input type="text" id="cfg-url" placeholder="http://localhost:11434" style="width:340px;">
+      <div class="hint">where your model server lives (llama.cpp, LM Studio, Ollama, vLLM…)</div>
+    </div>
+    <div class="field">
+      <label>runs per task (full benchmark)</label>
+      <select id="cfg-runs">
+        <option value="1">1 — fastest</option>
+        <option value="3">3 — most stable</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>open report in a new tab when done</label>
+      <select id="cfg-open">
+        <option value="on">on</option>
+        <option value="off">off</option>
+      </select>
+    </div>
+    <button class="btn" onclick="saveConfig()">Save settings</button>
+    <span id="cfg-msg" class="hint"></span>
+  </div>
+
+  <p class="muted">effbench runs a private server on this machine only (127.0.0.1) — nothing leaves your computer.</p>
+</div>
+
+<script>
+let pollTimer = null;
+let lastTag = null;
+
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function setRunStatus(t) { document.getElementById('run-status').textContent = t; }
+
+async function startRun(which) {
+  const r = await api('/api/run', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({which})
+  });
+  if (!r.started) { setRunStatus('a benchmark is already running — wait for it'); return; }
+  document.getElementById('progress').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  document.getElementById('live-body').innerHTML = '';
+  setRunStatus('running…');
+  poll();
+}
+
+function poll() {
+  if (pollTimer) clearTimeout(pollTimer);
+  pollTimer = setTimeout(async () => {
+    const s = await api('/api/state');
+    renderState(s);
+    if (s.phase === 'running' || s.phase === 'detecting' || s.phase === 'reporting') poll();
+  }, 700);
+}
+
+function renderState(s) {
+  const pct = s.tasks_total ? Math.round(100 * s.tasks_done / s.tasks_total) : 0;
+  document.getElementById('bar-fill').style.width = pct + '%';
+  document.getElementById('counts').textContent =
+    s.tasks_done + ' / ' + (s.tasks_total || '?') + ' tasks';
+  document.getElementById('cur-task').textContent = s.current_task || '';
+
+  const body = document.getElementById('live-body');
+  body.innerHTML = (s.rows || []).map(r =>
+    `<tr><td>${r.task}</td>` +
+    `<td class="num ${r.pass ? 'pass' : 'fail'}">${r.pass ? 'pass' : (r.err ? 'error' : 'fail')}</td>` +
+    `<td class="num">${r.tok_s ? r.tok_s.toFixed(1) : '–'}</td></tr>`
+  ).join('');
+
+  const busy = ['detecting', 'running', 'reporting'].includes(s.phase);
+  document.getElementById('btn-quick').disabled = busy;
+  document.getElementById('btn-full').disabled = busy;
+
+  if (s.phase === 'idle' && !s.summary) setRunStatus('pick a benchmark to start');
+  if (s.phase === 'detecting') setRunStatus('looking for your AI server…');
+  if (s.phase === 'running')
+    setRunStatus('running ' + (s.which === 'quick' ? 'quick' : 'full') + ' benchmark — ' + (s.model || ''));
+  if (s.phase === 'reporting') setRunStatus('building report…');
+  if (s.phase === 'error') {
+    setRunStatus('');
+    document.getElementById('progress').style.display = 'none';
+    alert('Benchmark failed: ' + (s.error || 'unknown error'));
+  }
+  if (s.phase === 'done' && s.summary) {
+    const sm = s.summary;
+    lastTag = sm.tag;
+    document.getElementById('progress').style.display = 'none';
+    document.getElementById('summary').style.display = 'block';
+    document.getElementById('s-tps').textContent = Math.round(sm.raw_tps);
+    document.getElementById('s-acc').textContent = Math.round(sm.pass_rate * 100) + '%';
+    document.getElementById('s-eff').textContent = Math.round(sm.eff_tps);
+    const fitEl = document.getElementById('s-fit');
+    const words = {above: 'faster than typical', in: 'typical', below: 'slower than typical'};
+    fitEl.textContent = (words[sm.fit] || 'no reference data') +
+      (sm.band ? ` (${sm.band[0]}–${sm.band[1]} tok/s)` : '');
+    fitEl.className = 'big fit-' + (sm.fit || 'in');
+    setRunStatus('done — run ' + sm.tag);
+    loadTags();
+    if (s.config && s.config.open) window.open(sm.report, '_blank');
+  }
+}
+
+function openReport() {
+  if (lastTag) window.open('/report/' + lastTag + '.html', '_blank');
+}
+
+async function loadTags() {
+  const r = await api('/api/tags');
+  const tags = r.tags || [];
+  const body = document.getElementById('tags-body');
+  body.innerHTML = tags.length ? tags.map(t =>
+    `<tr><td>${t.when}</td><td>${t.tag}</td>` +
+    `<td class="num">${t.tps ? t.tps.toFixed(0) : '–'}</td>` +
+    `<td class="num">${Math.round(t.pass * 100)}%</td>` +
+    `<td class="num"><a href="/report/${t.tag}.html" target="_blank">report</a></td></tr>`
+  ).join('') : '<tr><td colspan="5" class="muted">no runs yet — run a benchmark above</td></tr>';
+
+  const a = document.getElementById('cmp-a'), b = document.getElementById('cmp-b');
+  a.innerHTML = b.innerHTML = tags.map((t, i) =>
+    `<option value="${t.tag}">${t.when} · ${t.tps ? t.tps.toFixed(0) : '–'} tok/s · ${Math.round(t.pass * 100)}%</option>`
+  ).join('');
+  if (tags.length >= 2) { a.selectedIndex = 0; b.selectedIndex = 1; }
+}
+
+function refreshCompareHint() {}
+
+async function doCompare() {
+  const a = document.getElementById('cmp-a').value;
+  const b = document.getElementById('cmp-b').value;
+  if (!a || !b || a === b) { alert('pick two different runs'); return; }
+  const r = await api('/api/compare', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({a, b})
+  });
+  if (r.report) window.open(r.report, '_blank');
+  else alert(r.error || 'comparison failed');
+}
+
+async function loadConfig() {
+  const s = await api('/api/state');
+  document.getElementById('ver').textContent = 'v' + s.version;
+  document.getElementById('cfg-url').value = s.config.url || '';
+  document.getElementById('cfg-runs').value = String(s.config.runs || 1);
+  document.getElementById('cfg-open').value = s.config.open ? 'on' : 'off';
+}
+
+async function saveConfig() {
+  const url = document.getElementById('cfg-url').value.trim();
+  if (url) {
+    try { await api('/api/detect'); } catch (e) {}
+  }
+  const r = await api('/api/config', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      url: url || null,
+      runs: parseInt(document.getElementById('cfg-runs').value, 10),
+      open: document.getElementById('cfg-open').value === 'on'
+    })
+  });
+  document.getElementById('cfg-msg').textContent = r.ok ? 'saved ✓' : 'save failed';
+  setTimeout(() => document.getElementById('cfg-msg').textContent = '', 2000);
+}
+
+loadConfig();
+loadTags();
+poll();
+</script>
+</body>
+</html>

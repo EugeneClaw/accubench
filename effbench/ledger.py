@@ -8,13 +8,13 @@ from .explainer import for_task
 
 def append_record(path, rec):
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    with open(path, "a") as f:
+    with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(rec) + "\n")
 
 
 def load_ledger(path, tags=None):
     recs = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:

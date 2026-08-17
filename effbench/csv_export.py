@@ -19,7 +19,7 @@ def export_per_task(records, path):
         "pass", "tok_s", "wall_s", "accept_pct", "draft_n",
         "error", "grader_detail",
     ]
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for r in records:
@@ -46,7 +46,7 @@ def export_summary(records_by_tag, path):
         "tag", "n_tasks", "n_pass", "pass_rate", "raw_tps_median",
         "eff_tps", "accept_pct_median", "fit_band_lo", "fit_band_hi",
     ]
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for tag, recs in records_by_tag.items():
@@ -75,7 +75,7 @@ def export_compare(records_a, records_b, tag_a, tag_b, path):
     by_task_a = {r["task"]: r for r in records_a}
     by_task_b = {r["task"]: r for r in records_b}
     tasks = sorted(set(by_task_a) | set(by_task_b))
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for tid in tasks:

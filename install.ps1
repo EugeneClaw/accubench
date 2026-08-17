@@ -54,7 +54,9 @@ if (Test-Path (Join-Path $Src ".git")) {
 $launcher = Join-Path $Bin "effbench.cmd"
 @"
 @echo off
-REM effbench launcher — sets PYTHONPATH so `python -m effbench` resolves.
+REM effbench launcher — UTF-8 mode so reports/labels never crash on cp1252.
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
 set "EFFBEN_SRC=$Src"
 set "PYTHONPATH=$Src;%PYTHONPATH%"
 $py -m effbench %*

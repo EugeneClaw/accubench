@@ -94,7 +94,7 @@ def grade_code(g, content):
         return False, f"code too long ({len(code)} chars)"
     with tempfile.TemporaryDirectory() as td:
         path = os.path.join(td, "sol.py")
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(code)
         try:
             r = subprocess.run(

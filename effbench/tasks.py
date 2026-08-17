@@ -17,7 +17,7 @@ def load_suite(path):
         raise FileNotFoundError(f"suite not found: {path}")
     tasks = []
     for fp in files:
-        with open(fp) as f:
+        with open(fp, encoding="utf-8") as f:
             data = json.load(f)
         items = data["tasks"] if isinstance(data, dict) else data
         for t in items:

@@ -112,7 +112,7 @@ def _make_report(tag, ledger, props, out_path):
     klass = classify_fit(rtps, band)
     html_doc = render_report([(tag, recs, band, klass, hwc)], props=props,
                              title=f"effbench · {tag}")
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(html_doc)
     return hwc, klass, band
 

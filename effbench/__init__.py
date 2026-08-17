@@ -1,6 +1,6 @@
-"""llama-effbench: quality-weighted benchmark for llama.cpp servers.
+"""effbench: quality-weighted benchmark for any OpenAI-compatible inference server.
 
 effective t/s = raw t/s × task pass-rate
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"

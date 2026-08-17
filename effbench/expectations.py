@@ -12,7 +12,7 @@ DATA_PATH = os.path.join(HERE, "expectations.json")
 
 
 def _load():
-    with open(DATA_PATH) as f:
+    with open(DATA_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 

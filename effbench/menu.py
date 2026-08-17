@@ -204,7 +204,7 @@ def _do_compare():
     os.makedirs(REPORTS_DIR, exist_ok=True)
     html = render_report([(ta, ra, band, ka, hwc), (tb, rb, band, kb, hwc)],
                          props=props, mode="compare")
-    with open(out, "w") as f:
+    with open(out, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"   ✓ comparison saved: {out}")
     if config.get("open") is not False:

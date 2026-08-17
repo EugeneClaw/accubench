@@ -31,7 +31,7 @@ def load():
     if not os.path.exists(PATH):
         return out
     try:
-        with open(PATH) as f:
+        with open(PATH, encoding="utf-8") as f:
             saved = json.load(f)
         out.update({k: v for k, v in saved.items() if k in DEFAULTS})
     except (json.JSONDecodeError, OSError):
@@ -42,7 +42,7 @@ def load():
 def save(cfg):
     """Persist the full config to disk."""
     os.makedirs(os.path.dirname(PATH), exist_ok=True)
-    with open(PATH, "w") as f:
+    with open(PATH, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
 
 

@@ -8,8 +8,9 @@ effbench development priorities. Items move up or down as user feedback and soak
 - **v0.3.0** (2026-08-17) — interactive terminal menu, server auto-detection, all user data under `~/.effbench/`, one-line uninstall, installers auto-launch
 - **v0.4.0** (2026-08-17) — browser front end (localhost web UI: buttons, live progress, hosted reports, past runs + compare, settings), Windows cp1252 crash fix (all file I/O explicit UTF-8)
 - **v0.5.0** (2026-08-17) — measured numbers: median/mean/peak/p10–p90 stats, generation-only (cache-invariant) speed, band sources labelled (warm-cache soak), quick-suite ×0.89 calibration, expected-pass badges from the reference soak, per-fail guidance, radar fix (no fake zero axes), spec-decode accept-rate fix (was always 0% on llama.cpp). Suites and graders untouched.
+- **v0.6.0** (2026-08-17) — instrument redesign: `tokens.py` single design source (one palette across UI + reports), hero cluster with pass-rate arc, purpose ladder replaces radar, task metric rows, dumbbell compare with percent deltas, busy-animation system (pulse dot + sweeping segmented rail + row arrivals + elapsed clock, `prefers-reduced-motion` respected), desktop shortcuts (Win) / effbench.app (macOS) / menu entry (Linux) with close-window-to-stop lifecycle, print stylesheet. Design review: docs/design-review-v1.html.
 
-## v0.6 — Findability (next)
+## v0.7 — Findability (next)
 
 - [ ] **Find-servers button** in the web UI: probe localhost ports + LAN subnet (short timeouts), list what answers with its model, one-click select, graceful none-found state with "here's how to start one" hints
 - [ ] `effbench go --compare OLD --against NEW` — compare two recipes in a single command
@@ -19,9 +20,9 @@ effbench development priorities. Items move up or down as user feedback and soak
 
 ## v0.7 — Presentation depth
 
-- [ ] Gauge dial for effective speed; dumbbell chart for task-level Δt/s in compare view
 - [ ] Eff-t/s trend line across run history (recipe sweep visualiser)
 - [ ] Per-task timing detail in the report (P50/P90 wall time, not just t/s)
+- [ ] Vision-QA pass over every surface (automated screenshot → model critique loop)
 - [ ] Expand full suite to 50+ tasks for higher statistical confidence on ship decisions (additive — existing tasks frozen)
 
 ## v0.8 — Suite depth (additive only; existing tasks never change)

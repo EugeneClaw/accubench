@@ -2,6 +2,35 @@
 
 All notable changes to effbench, newest first.
 
+## 0.6.0 — 2026-08-17
+
+The instrument release — a full visual redesign of both surfaces, built on the design review (docs/design-review-v1.html). Presentation only: suites, prompts, graders, fixtures and ledger format are untouched, so every past ledger keeps rendering and every number stays comparable.
+
+### One design system
+- New `effbench/tokens.py`: single source of truth for color, type and motion. Void-black panel, four-step graphite ramp, one mint accent. Web UI and reports can no longer drift apart.
+- Type ramp with `tabular-nums` on every live digit — numbers stop wobbling.
+- Motion scale (140ms hovers, 240ms panels, 160ms row arrivals) with full `prefers-reduced-motion` support.
+- Print stylesheet: reports print as clean paper documents.
+
+### Report
+- **Hero cluster** replaces the stat-card row: one 56px effective-t/s number, supporting metrics on a shared micro-bar scale, pass-rate arc gauge, accept-rate strip. The screenshot is the summary.
+- **Purpose ladder** replaces the radar: ranked rungs with n counts, zero-pass drawn as a visible sliver, untested purposes listed underneath.
+- **Task metric rows**: drawn chips, tabular digits, fail hints and reference badges as distinct slots on a fixed grid.
+- **Dumbbell compare**: per-metric two-dot rows with percent deltas — the distance between the dots is the finding.
+
+### Web UI
+- **Busy-animation system** — when anything is happening, something is always moving:
+  - a pulse dot on the status line (busy),
+  - a segmented progress rail where the in-flight segment sweeps forever (not hung — a frozen render can't fake it),
+  - current task name + ticking elapsed clock (attention where it matters),
+  - per-task rows fade in as they resolve.
+- Hero cluster in miniature when a run finishes; the UI and report now speak the same visual language.
+- Designed first-run state (no more eternal "loading…"), styled past-runs grid, mint focus states.
+
+### Lifecycle (the appliance question)
+- Windows installer drops an **effbench shortcut** on the Desktop + Start Menu: double-click starts the UI in a titled console ("close this window to stop"), no PowerShell needed. Nothing is backgrounded — close the window and it's gone.
+- macOS installer creates `~/Applications/effbench.app` with the same semantics; Linux gets a Terminal=true menu entry.
+
 ## 0.5.0 — 2026-08-17
 
 The measured-numbers release. Suites, prompts, graders and fixtures are untouched — every past and future ledger number stays comparable. Everything here is better measurement, better context, or a bug fix in what was displayed.

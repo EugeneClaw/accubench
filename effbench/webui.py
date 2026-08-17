@@ -130,8 +130,17 @@ def _worker(which):
             "suite": suite,
             "raw_tps": round(rtps, 1),
             "gen_tps": round(agg.get("gen_tps_median") or 0, 1),
+            "peak_tps": round(agg.get("gen_tps_peak") or agg.get("peak_tps") or 0, 1),
+            "p90": round(agg.get("p90_tps") or 0, 1),
             "pass_rate": agg.get("pass_rate") or 0,
             "eff_tps": round(agg.get("eff_tps") or rtps * (agg.get("pass_rate") or 0), 1),
+            "n_tasks": agg.get("n", 0),
+            "n_pass": agg.get("n_pass", 0),
+            "fail_tasks": [r.get("task", "?") for r in bag if not r.get("pass")],
+            "rows": [
+                {"task": r.get("task", "?"), "pass": bool(r.get("pass"))}
+                for r in sorted(bag, key=lambda r: r.get("i", 0))
+            ],
             "hw_class": hwc,
             "fit": klass,
             "band": list(band[:2]) if band else None,

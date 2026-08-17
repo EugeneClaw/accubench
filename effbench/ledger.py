@@ -100,6 +100,7 @@ def _flat_stats(recs):
     gens = [r["gen_tps"] for r in done if r.get("gen_tps") is not None]
     if gens:
         out["gen_tps_median"] = round(statistics.median(gens), 1)
+        out["gen_tps_peak"] = round(max(gens), 1)
     if out["raw_tps"] is not None:
         out["eff_tps"] = round(out["raw_tps"] * out["pass_rate"], 1)
     return out

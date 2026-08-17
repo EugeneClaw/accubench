@@ -62,14 +62,15 @@
   .rail { display:flex; gap:3px; margin:14px 0 8px; }
   .seg { flex:1; height:6px; border-radius:3px; background:var(--track); position:relative; overflow:hidden; }
   .seg.done { background:var(--mint); }
+  .seg.done.fail { background:var(--warn); }
   .seg.active { background:var(--graphite); }
   .seg.active::after {
-    content:""; position:absolute; inset:0;
-    background:linear-gradient(90deg, transparent, var(--mint), transparent);
-    transform:translateX(-100%);
-    animation:sweep 1.1s linear infinite;
+    /* in-flight: steady 35% mint fill — no sweep. An instrument that guesses
+       (infinite motion with no information) teaches distrust; elapsed clock
+       + live pass tally carry the "not hung" job now. */
+    content:""; position:absolute; inset:0; width:35%;
+    background:rgba(79,227,193,0.55); border-radius:inherit;
   }
-  @keyframes sweep { to { transform:translateX(100%); } }
 
   .counts { font-family:var(--mono); font-size:11px; color:var(--ink3);
             display:flex; justify-content:space-between; letter-spacing:0.04em; }
@@ -94,17 +95,81 @@
           font-variant-numeric:tabular-nums; }
   .lrun { font-family:var(--mono); font-size:10px; color:var(--ink3); text-align:right; }
 
-  /* summary — hero in miniature */
-  .eq-chip { display:inline-flex; align-items:baseline; gap:6px; margin-top:8px;
+  /* summary — the verdict screen */
+  .verdict-line { font-family:var(--mono); font-size:13px; text-transform:uppercase;
+                  letter-spacing:0.16em; color:var(--mint); margin-top:2px; }
+  .verdict-sub { font-family:var(--mono); font-size:11.5px; color:var(--ink2); margin-top:6px; }
+  .hero-num { display:flex; align-items:baseline; gap:10px; margin-top:10px; }
+  .hero-num .num { font-size:64px; font-weight:700; letter-spacing:-0.02em; line-height:1;
+                   font-variant-numeric:tabular-nums; }
+  .hero-num .unit { font-family:var(--mono); font-size:14px; color:var(--ink3); }
+  .hero-num .adj { font-family:var(--mono); font-size:11px; letter-spacing:0.14em;
+                   color:var(--mint); border:1px solid rgba(79,227,193,0.4);
+                   border-radius:4px; padding:3px 7px; }
+  .hero-gloss { font-size:13px; color:var(--ink2); margin-top:8px; }
+  .prov { font-family:var(--mono); font-size:11px; color:var(--ink3); margin-top:10px; }
+  .eq-chip { display:inline-flex; align-items:baseline; gap:6px; margin-top:10px;
              padding:4px 10px; border-radius:7px; background:var(--graphite);
              border:1px solid var(--hairline); font-family:var(--mono);
              font-size:12.5px; color:var(--ink2); font-variant-numeric:tabular-nums; }
   .eq-chip b { color:var(--ink); font-weight:600; }
   .eq-chip .eq-x { color:var(--ink3); font-size:10.5px; }
   .eq-chip .eq-res { color:var(--mint); }
-  .brag { margin-top:12px; font-size:13px; line-height:1.55; color:var(--ink2); max-width:640px; }
-  #s-best { animation: pop 0.5s ease-out; }
+
+  /* confrontation lanes — never share a scale */
+  .lanes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px; }
+  .lane { border-radius:8px; padding:14px 16px; background:var(--carbon); }
+  .lane.checked { border:1px solid rgba(79,227,193,0.55); }
+  .lane.unchecked { border:1px dashed var(--hairline); }
+  .l-tag { font-family:var(--mono); font-size:10px; text-transform:uppercase;
+           letter-spacing:0.12em; color:var(--ink3); }
+  .lane.checked .l-tag { color:var(--mint); }
+  .l-num { font-size:38px; font-weight:700; margin-top:6px; line-height:1;
+           font-variant-numeric:tabular-nums; }
+  .lane.unchecked .l-num { color:var(--ink3); font-weight:600; }
+  .l-num .u { font-family:var(--mono); font-size:11px; color:var(--ink3); margin-left:4px; }
+  .l-cap { font-size:11.5px; color:var(--ink2); margin-top:8px; line-height:1.5; }
+  .confront-kicker { font-size:13px; color:var(--ink2); margin-top:14px; line-height:1.55; }
+  .confront-kicker em { color:var(--ink); font-style:italic; }
+
+  /* waterfall — where the speed goes */
+  .wf { margin-top:8px; }
+  .wf-row { display:grid; grid-template-columns:150px 1fr 48px; gap:10px; align-items:center;
+            padding:7px 0; border-bottom:1px solid var(--track); }
+  .wf-row:last-of-type { border-bottom:none; }
+  .wf-label { font-family:var(--mono); font-size:12px; color:var(--ink2); text-align:right; }
+  .wf-track { height:22px; background:var(--track); border-radius:3px; overflow:hidden; }
+  .wf-bar { height:100%; border-radius:3px; width:0; transition:width 900ms cubic-bezier(.2,.7,.2,1); }
+  .wf-bar.unchecked { background:transparent; border:1px dashed var(--hair2, var(--ink3)); }
+  .wf-bar.wall { background:rgba(154,166,181,0.35); }
+  .wf-bar.eff { background:var(--mint); }
+  .wf-val { font-family:var(--mono); font-size:13px; color:var(--ink2); text-align:right;
+            font-variant-numeric:tabular-nums; }
+  .wf-val.mint { color:var(--mint); font-weight:700; }
+  .wf-delta { grid-column:2 / 4; font-family:var(--mono); font-size:10.5px; color:var(--ink3);
+              margin-top:-2px; line-height:1.5; }
+  .wf-delta b { color:var(--ink2); }
+
+  /* ticks — the pass, made visible */
+  .ticks { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+  .tick { width:24px; height:24px; border-radius:6px; display:inline-flex; align-items:center;
+          justify-content:center; font-size:13px; font-weight:700; }
+  .tick.pass { background:rgba(74,222,128,0.10); color:var(--pass); }
+  .tick.fail { background:rgba(251,191,36,0.12); color:var(--warn); }
+  .tick.hollow { background:transparent; border:1px dashed var(--hairline); color:var(--ink3); font-size:10px; }
+  .fail-line { font-size:12.5px; color:var(--ink2); margin-top:10px; line-height:1.6; }
+  .fail-line .fx { font-family:var(--mono); font-size:11px; color:var(--warn); }
+  .champ-tag { display:none; font-family:var(--mono); font-size:10.5px; letter-spacing:0.1em;
+               color:var(--void); background:var(--mint); border-radius:5px;
+               padding:4px 9px; font-weight:700; animation:pop 0.5s ease-out; }
   @keyframes pop { from { transform:scale(0.6); opacity:0; } to { transform:scale(1); opacity:1; } }
+
+  @media (max-width:560px) {
+    .hero-num .num { font-size:44px; }
+    .lanes { grid-template-columns:1fr; }
+    .wf-row { grid-template-columns:110px 1fr 48px; }
+    .hero-num .adj { display:none; }
+  }
   .cluster { display:grid; grid-template-columns:1.5fr 1fr; gap:1px; background:var(--hairline);
              border:1px solid var(--hairline); border-radius:14px; overflow:hidden; margin-top:14px; }
   .cluster > div { background:var(--carbon); padding:16px 18px 14px; }
@@ -204,25 +269,42 @@
     </div>
 
     <div id="summary" style="display:none">
-      <div class="cluster">
-        <div>
-          <div class="k-label">Effective speed · raw × pass rate</div>
-          <div style="display:flex; align-items:baseline; gap:8px;">
-            <span class="k-num" id="s-eff">–</span><span class="k-unit">tok/s</span>
-          </div>
-          <div class="eq-chip" id="s-eq" style="margin-top:8px;"></div>
-          <div class="k-sub" id="s-sub"></div>
+      <div class="verdict-line" id="s-verdict">—</div>
+      <div class="verdict-sub" id="s-verdict-sub"></div>
+      <div class="hero-num">
+        <span class="num" id="s-eff">–</span><span class="unit">tok/s</span>
+        <span class="adj">· CHECKED</span>
+      </div>
+      <div class="hero-gloss">effective speed — correct answers per second</div>
+      <div class="eq-chip" id="s-eq"></div>
+      <div class="prov" id="s-prov"></div>
+
+      <div class="subhead" style="margin-top:26px;">The number you could post</div>
+      <div class="lanes">
+        <div class="lane checked">
+          <div class="l-tag">Checked · yours</div>
+          <div class="l-num"><span id="lane-c-num">–</span><span class="u">tok/s</span></div>
+          <div class="l-cap" id="lane-c-cap"></div>
         </div>
-        <div class="arc-wrap">
-          <div class="arc-num" id="s-acc">–</div>
-          <div class="arc-lbl" id="s-acc-lbl">tasks right</div>
+        <div class="lane unchecked">
+          <div class="l-tag">Unchecked · also yours</div>
+          <div class="l-num"><span id="lane-u-num">–</span><span class="u">tok/s</span></div>
+          <div class="l-cap">generation-only · best case · zero answers graded.<br>This is how the screenshots are made.</div>
         </div>
       </div>
-      <div class="brag" id="s-brag"></div>
-      <div style="margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <div class="confront-kicker">You own both numbers. Only one survives the follow-up question:
+        <em>"Yeah — but were the answers right?"</em></div>
+
+      <div class="subhead" style="margin-top:26px;">Where the speed goes</div>
+      <div class="wf" id="wf"></div>
+
+      <div class="subhead" style="margin-top:26px;">The pass, made visible</div>
+      <div class="ticks" id="ticks" role="img"></div>
+      <div class="fail-line" id="fail-line"></div>
+
+      <div style="margin-top:18px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
         <button class="btn" onclick="openReport()">Open full report</button>
-        <span class="status" id="s-fit"></span>
-        <span id="s-best" style="display:none" class="tbadge warn">★ new best</span>
+        <span class="champ-tag" id="s-champ">NEW CHAMPION</span>
       </div>
     </div>
   </div>
@@ -319,13 +401,16 @@ function buildRail(total) {
   }
 }
 
-function paintRail(done, total) {
+function paintRail(done, total, rows) {
   const segs = document.querySelectorAll('#rail .seg');
   const per = total / segs.length;
   segs.forEach((seg, i) => {
     const covers = i * per;                 // first task index this segment covers
-    if (done > covers + per - 1e-9) seg.className = 'seg done';   // fully completed
-    else if (done >= covers) seg.className = 'seg active';        // in flight — sweeps
+    const endIdx = Math.min(Math.round(covers + per), (rows || []).length);
+    const segRows = (rows || []).slice(Math.round(covers), endIdx);
+    const failed = segRows.some(r => !r.pass);
+    if (done > covers + per - 1e-9) seg.className = failed ? 'seg done fail' : 'seg done';
+    else if (done >= covers) seg.className = 'seg active';        // in flight
     else seg.className = 'seg';
   });
 }
@@ -379,10 +464,13 @@ function renderState(s) {
     // rail sized from the real total (quick×3, full×runs change it)
     const want = Math.min(s.tasks_total || 12, 40);
     if (document.querySelectorAll('#rail .seg').length !== want) buildRail(want);
-    paintRail(s.tasks_done || 0, s.tasks_total || 1);
+    paintRail(s.tasks_done || 0, s.tasks_total || 1, s.rows || []);
+    const rs = s.rows || [];
+    const np = rs.filter(r => r.pass).length;
+    const tally = rs.length ? ' · passed ' + np + '/' + rs.length + ' so far' : '';
+    document.getElementById('cur-task').textContent = (s.current_task || '') + tally;
     document.getElementById('counts').textContent =
       (s.tasks_done || 0) + ' / ' + (s.tasks_total || '?');
-    document.getElementById('cur-task').textContent = s.current_task || '';
 
     const rows = s.rows || [];
     if (rows.length !== lastRowsLen) {
@@ -418,67 +506,128 @@ function renderState(s) {
     runStartedAt = null;
     document.getElementById('progress').style.display = 'none';
     document.getElementById('summary').style.display = 'block';
-    // count-up: the number earns itself (respects reduced motion)
-    const eff = Math.round(sm.eff_tps), raw = Math.round(sm.raw_tps), pct = Math.round(sm.pass_rate * 100);
-    const el = document.getElementById('s-eff');
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce || eff === 0) { el.textContent = eff; }
-    else {
-      const t0 = performance.now(), dur = 900;
-      (function tick(now) {
-        const k = Math.min(1, (now - t0) / dur);
-        el.textContent = Math.round(eff * (1 - Math.pow(1 - k, 3)));
-        if (k < 1) requestAnimationFrame(tick);
-      })(t0);
-    }
-    document.getElementById('s-eq').innerHTML =
-      `<b>${raw}</b><span class="eq-x">×</span><b>${pct}%</b>` +
-      `<span class="eq-x">=</span><b class="eq-res">${eff}</b>` +
-      `<span class="eq-x" style="font-size:9.5px">tok/s</span>`;
-    document.getElementById('s-acc').textContent = pct + '%';
-    document.getElementById('s-acc-lbl').textContent = pct + '% right';
-    document.getElementById('s-sub').innerHTML =
-      `wall <b>${raw}</b><span class="sep">·</span>` +
-      (sm.gen_tps ? `gen <b>${Math.round(sm.gen_tps)}</b><span class="sep">·</span>` : '') +
-      `suite ${sm.suite || '–'}`;
-    const bragEl = document.getElementById('s-brag');
-    if (pct >= 85) {
-      bragEl.innerHTML = `Speed you can trust — your model passed ${pct}% of everything it attempted. ` +
-        (sm.gen_tps && sm.gen_tps > sm.raw_tps * 1.3
-          ? `Others would headline the <b>${Math.round(sm.gen_tps)} tok/s</b> generation number; that one pretends wrong answers are free.`
-          : '');
-    } else if (pct >= 60) {
-      bragEl.innerHTML = 'Speed corrected for what is actually right — the number that predicts how this model feels to use.';
-    } else {
-      bragEl.innerHTML = 'Speed with mistakes subtracted — at this accuracy, faster hardware mostly delivers wrong answers sooner.';
-    }
-    const fitEl = document.getElementById('s-fit');
-    const words = {above: 'faster than typical', in: 'typical', below: 'slower than typical'};
-    let fitTxt = (words[sm.fit] || 'no reference data') +
-      (sm.band ? ` (typical ${sm.band[0]}–${sm.band[1]})` : '');
-    // don't let a cold wall read as a slow rig: gen-only inside the band
-    // means the server is fine; wall includes prompt processing
-    let fitCol = sm.fit === 'below' ? 'var(--warn)' : 'var(--ink2)';
-    if (sm.fit === 'below' && sm.gen_tps && sm.band && sm.gen_tps >= sm.band[0]) {
-      fitTxt = `server in-band — gen-only ${Math.round(sm.gen_tps)} tok/s sits inside the typical band; wall is cold-run prompt processing`;
-      fitCol = 'var(--mint)';
-    }
-    fitEl.textContent = fitTxt;
-    fitEl.style.color = fitCol;
-    // new best? compare eff_tps against every past run of the same suite
-    const bestEl = document.getElementById('s-best');
-    bestEl.style.display = 'none';
-    api('/api/tags').then(r => {
-      const mine = (r.tags || []).filter(t => (t.suite || '') === (sm.suite || ''));
-      const prior = mine.filter(t => t.tag !== sm.tag);
-      if (prior.length && sm.eff_tps > Math.max(...prior.map(t => t.eff_tps))) {
-        bestEl.style.display = 'inline-block';
-      }
-    }).catch(() => {});
+    renderVerdict(sm, true);
     setRunStatus('done — run ' + sm.tag);
     loadTags();
     if (s.config && s.config.open) window.open(sm.report, '_blank');
   }
+}
+
+/* ---- the verdict screen (design mandate §04) ---- */
+
+function fmtClock(sec) {
+  const m = Math.floor(sec / 60), r = Math.round(sec % 60);
+  return m + ':' + String(r).padStart(2, '0');
+}
+
+function renderVerdict(sm, fresh) {
+  const eff = Math.round(sm.eff_tps), raw = Math.round(sm.raw_tps),
+        pct = Math.round(sm.pass_rate * 100);
+  const gen = sm.gen_tps || 0, peak = sm.peak_tps || 0, n = sm.n_tasks || 0,
+        npass = sm.n_pass || 0;
+  const suite = sm.suite || '–';
+
+  // verdict line — four states, zero sarcasm (copy deck)
+  let head, sub;
+  if (pct === 100) {
+    head = 'Flawless, at speed.';
+    sub = `${eff} checked tok/s · ${npass}/${n} tasks · nothing discounted.`;
+  } else if (pct >= 90) {
+    head = 'Fast — and right.';
+    sub = `${eff} checked tok/s · ${npass}/${n} graded · speed discounted ${100 - pct}% for wrong answers.`;
+  } else if (pct >= 70) {
+    const ft = (sm.fail_tasks && sm.fail_tasks[0]) || 'first failed task';
+    head = 'Fast — mostly right.';
+    sub = `${eff} checked tok/s · ${npass}/${n} graded · fix target: ${ft}.`;
+  } else {
+    head = 'Quick — but not trustworthy yet.';
+    sub = `${eff} checked tok/s · ${100 - pct}% of speed spent on wrong answers · change model or quant before tuning anything else.`;
+  }
+  document.getElementById('s-verdict').textContent = head;
+  document.getElementById('s-verdict-sub').textContent = sub;
+
+  // hero — count-up only on fresh results
+  const el = document.getElementById('s-eff');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!fresh || reduce || eff === 0) { el.textContent = eff; }
+  else {
+    const t0 = performance.now(), dur = 900;
+    (function tick(now) {
+      const k = Math.min(1, (now - t0) / dur);
+      el.textContent = Math.round(eff * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) requestAnimationFrame(tick);
+    })(t0);
+  }
+  document.getElementById('s-eq').innerHTML =
+    `<b>${raw}</b><span class="eq-x">wall ×</span><b>${pct}%</b>` +
+    `<span class="eq-x">pass =</span><b class="eq-res">${eff}</b>`;
+  document.getElementById('s-prov').textContent =
+    `measured this run · ${suite} suite · ${n} tasks · nothing left this machine`;
+
+  // confrontation lanes
+  document.getElementById('lane-c-num').textContent = eff;
+  document.getElementById('lane-c-cap').innerHTML =
+    `${n} tasks graded · ${npass} passed · wall-clock, cold start.<br>The speed of answers you can use.`;
+  const un = Math.round(peak || gen * 1.4);
+  document.getElementById('lane-u-num').textContent = un;
+
+  // waterfall — where the speed goes (one scale 0..peak)
+  const wf = document.getElementById('wf');
+  const rows = [
+    { label: 'peak generation', val: peak, cls: 'unchecked',
+      delta: peak && gen ? `−${Math.round(peak - gen)} · best case vs typical — p90 ${sm.p90 || Math.round(gen * 1.36)}, median is what you actually get` : null },
+    { label: 'typical generation', val: gen, cls: 'unchecked',
+      delta: gen && raw ? `−${Math.round(gen - raw)} · cold prompt processing — this run ingested the prompt cold; tunable: context length, cache warmth` : null },
+    { label: 'wall clock', val: raw, cls: 'wall',
+      delta: raw ? `−${Math.max(0, raw - eff)} · the truth discount — × ${(pct / 100).toFixed(2)} pass rate. <b>The only discount that means the answers were checked.</b>` : null },
+    { label: 'effective · checked', val: eff, cls: 'eff', delta: null },
+  ];
+  const vmax = Math.max(peak, gen, raw, eff, 1);
+  wf.innerHTML = rows.map(r => {
+    const w = Math.max(2, (r.val / vmax) * 100);
+    const d = r.delta ? `<div class="wf-delta">${r.delta}</div>` : '';
+    return `<div class="wf-row">` +
+      `<div class="wf-label">${r.label}</div>` +
+      `<div class="wf-track"><div class="wf-bar ${r.cls}" data-w="${w.toFixed(1)}"></div></div>` +
+      `<div class="wf-val${r.cls === 'eff' ? ' mint' : ''}">${Math.round(r.val)}</div>` +
+      `${d}</div>`;
+  }).join('') + `<div class="prov">all four figures measured this run · one scale, 0–${Math.round(vmax)} tok/s</div>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    document.querySelectorAll('#wf .wf-bar').forEach(b => { b.style.width = b.dataset.w + '%'; });
+  }));
+
+  // ticks — the pass, made visible
+  const ticksEl = document.getElementById('ticks');
+  const rowsArr = sm.rows || [];
+  ticksEl.innerHTML = rowsArr.map(r =>
+    `<span class="tick ${r.pass ? 'pass' : 'fail'}">${r.pass ? '✓' : '✕'}</span>`
+  ).join('') ||
+    Array.from({ length: n }, (_, i) =>
+      `<span class="tick ${i < npass ? 'pass' : 'fail'}">${i < npass ? '✓' : '✕'}</span>`).join('');
+  ticksEl.setAttribute('aria-label', `${npass} of ${n} tasks passed`);
+  const fails = (sm.fail_tasks || []);
+  const failEl = document.getElementById('fail-line');
+  if (npass === n && n > 0) {
+    failEl.innerHTML = `${npass} of ${n} passed. Nothing to fix — this run survived everything thrown at it.`;
+  } else if (fails.length) {
+    failEl.innerHTML = `${npass} of ${n} passed. The failure is named, not hidden: ` +
+      `<span class="fx">✕ ${fails.map(f => f.replace(/^([a-z]+)-/, '$1 · ')).join(' · ')}</span>. ` +
+      `That's your next fix target.`;
+  } else {
+    failEl.innerHTML = `${npass} of ${n} passed.`;
+  }
+
+  // champion — same trigger as the old ★, now a named ceremony
+  const champEl = document.getElementById('s-champ');
+  champEl.style.display = 'none';
+  api('/api/tags').then(r => {
+    const mine = (r.tags || []).filter(t => (t.suite || '') === (sm.suite || ''));
+    const prior = mine.filter(t => t.tag !== sm.tag);
+    if (!prior.length && mine.length) { champEl.style.display = 'inline-block'; champEl.textContent = 'FIRST BASELINE — CHAMPION'; }
+    else if (prior.length && sm.eff_tps > Math.max(...prior.map(t => t.eff_tps))) {
+      champEl.style.display = 'inline-block'; champEl.textContent = 'NEW CHAMPION';
+    }
+  }).catch(() => {});
 }
 
 function openReport() {

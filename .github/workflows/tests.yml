@@ -1,0 +1,49 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: validate + selftest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Validate quick suite
+        run: python3 -m effbench validate --suite suites/quick.json
+      - name: Validate full suite
+        run: python3 -m effbench validate --suite suites/
+      - name: Selftest
+        run: python3 tools/selftest.py
+      - name: Security scan (no LAN IPs / personal info)
+        run: |
+          ! grep -rE "192\.168\.1\.(245|146|33)" --include="*.py" --include="*.md" --include="*.sh" --include="*.ps1" --include="*.json" --include="*.bat" .
+          ! grep -rEi "Mart[y]n|Sibber[s]|lotti[e]|traci[e]|hermes-agent|Tailscale" --include="*.py" --include="*.md" --include="*.sh" --include="*.ps1" --include="*.json" --include="*.bat" .
+
+  security-scan:
+    name: security scan (no real LAN IPs / PII)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No real LAN IPs
+        run: |
+          if grep -rE "192\.168\.1\.(245|146|33)" --include="*.py" --include="*.md" --include="*.sh" --include="*.ps1" --include="*.json" --include="*.bat" --include="*.html" .; then
+            echo "FAIL: real LAN IP found in committed file"; exit 1
+          fi
+          echo "ok — no real LAN IPs"
+      - name: No PII
+        run: |
+          if grep -rEi "Mart[y]n|Sibber[s]|lotti[e]|traci[e]|hermes-agent|Tailscale|QNAP" --include="*.py" --include="*.md" --include="*.sh" --include="*.ps1" --include="*.json" --include="*.bat" --include="*.html" .; then
+            echo "FAIL: PII found in committed file"; exit 1
+          fi
+          echo "ok — no PII"

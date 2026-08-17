@@ -1,0 +1,25 @@
+{
+  "_doc": "Hardware-typical raw t/s bands for common models + quant combos. Used by the report to say 'fast for your hardware' / 'typical for this class'. Numbers are conservative medians from published benchmarks and community reports as of Aug 2026. They are NOT a guarantee; they are context. If your number is way above the band, something might be off (smaller model, slot contention helped, missing think-tag overhead). If way below, same the other way. Bands reflect the median task in our 1024-1500 token benchmark.",
+  "_note": "Update entries as the field moves. Add a new model+hw_class entry rather than overwriting. Tags: hw_class, model_arch, quant, tok_s_lo, tok_s_hi, ref_url",
+  "entries": [
+    {"hw_class": "phone_laptop", "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 8,  "tok_s_hi": 22, "ref_url": "https://github.com/ggerganov/llama.cpp/discussions"},
+    {"hw_class": "phone_laptop", "model_arch": "qwen3.27_b", "quant": "q4_k_m",  "tok_s_lo": 6,  "tok_s_hi": 16, "ref_url": ""},
+    {"hw_class": "phone_laptop", "model_arch": "llama3_8b",  "quant": "q4_k_m",  "tok_s_lo": 18, "tok_s_hi": 40, "ref_url": ""},
+    {"hw_class": "desktop_gpu_mid", "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 30,  "tok_s_hi": 65, "ref_url": ""},
+    {"hw_class": "desktop_gpu_mid", "model_arch": "llama3_8b",  "quant": "q4_k_m",  "tok_s_lo": 80,  "tok_s_hi": 130, "ref_url": ""},
+    {"hw_class": "desktop_gpu_high", "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 120, "tok_s_hi": 200, "ref_url": "own soak 2026-08-17, RTX 5090, b1-4df29be"},
+        {"hw_class": "desktop_gpu_high", "model_arch": "qwen3.27_b", "quant": "q5_k_m",  "tok_s_lo": 100, "tok_s_hi": 170, "ref_url": ""},
+        {"hw_class": "desktop_gpu_high", "model_arch": "llama3_8b",  "quant": "q4_k_m",  "tok_s_lo": 250, "tok_s_hi": 400, "ref_url": ""},
+        {"hw_class": "workstation",    "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 200, "tok_s_hi": 320, "ref_url": ""},
+        {"hw_class": "workstation",    "model_arch": "llama3_70b",  "quant": "iq4_xs", "tok_s_lo": 80,  "tok_s_hi": 140, "ref_url": ""},
+        {"hw_class": "dataclass",      "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 250, "tok_s_hi": 500, "ref_url": ""},
+        {"hw_class": "dataclass",      "model_arch": "llama3_70b",  "quant": "iq4_xs", "tok_s_lo": 150, "tok_s_hi": 320, "ref_url": ""}
+  ],
+  "_hw_class_blurbs": {
+    "phone_laptop": "Phones, thin laptops, anything without a discrete GPU. Slower but usable for chat and small tasks.",
+    "desktop_gpu_mid": "Mid-range desktops and laptops with a discrete GPU (e.g. RTX 4060) or M-series Pro chips.",
+    "desktop_gpu_high": "High-end desktops (RTX 4090/5090) or M-series Ultra. Sweet spot for 27B-class quants.",
+    "workstation": "Multi-GPU boxes or pro workstations. Overkill for chat, ideal for batch jobs and 70B+.",
+    "dataclass": "Server-class hardware (H100, DGX Spark). The fastest realistic setup; usually overkill for one user."
+  }
+}

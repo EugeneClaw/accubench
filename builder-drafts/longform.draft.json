@@ -1,0 +1,121 @@
+```json
+{
+  "tasks": [
+    {
+      "id": "five-odd-squares",
+      "category": "longform",
+      "prompt": "List the squares of the first five positive odd integers. Each result must be on its own line, starting with the number followed by a period and a space (e.g., '1. 1'). Do not include any other text.",
+      "max_tokens": 128,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "^1\\. 1\\n2\\. 9\\n3\\. 25\\n4\\. 49\\n5\\. 81$"
+      },
+      "good_output": "1. 1\n2. 9\n3. 25\n4. 49\n5. 81",
+      "bad_output": "1. 1\n2. 9\n3. 25\n4. 49\n5. 82"
+    },
+    {
+      "id": "json-factorial-sum",
+      "category": "longform",
+      "prompt": "Calculate the sum of the factorials of the integers 1 through 5 (1! + 2! + 3! + 4! + 5!). Return a JSON object with a single key 'total' mapping to the integer result. Do not include markdown code blocks.",
+      "max_tokens": 64,
+      "temperature": 0.0,
+      "grader": {
+        "type": "json",
+        "expect_keys": {
+          "total": 153
+        }
+      },
+      "good_output": "{\"total\": 153}",
+      "bad_output": "{\"total\": 154}"
+    },
+    {
+      "id": "paragraph-starts-with",
+      "category": "longform",
+      "prompt": "Write exactly three paragraphs. The first paragraph must begin with the word 'Alpha'. The second paragraph must begin with the word 'Beta'. The third paragraph must begin with the word 'Gamma'. Separate paragraphs with a blank line. The content of the rest of the text is irrelevant, as long as the starting words are correct.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "^Alpha.*\\n\\nBeta.*\\n\\nGamma.*$"
+      },
+      "good_output": "Alpha is the first letter.\n\nBeta follows alpha.\n\nGamma comes after beta.",
+      "bad_output": "Alpha is the first letter.\n\nAlpha follows alpha.\n\nGamma comes after beta."
+    },
+    {
+      "id": "markdown-table-primes",
+      "category": "longform",
+      "prompt": "Create a markdown table with exactly two columns. The first column header must be 'Prime' and the second must be 'Square'. List the first three prime numbers and their squares. Use standard markdown table syntax with a header row, a separator row of dashes, and data rows. Do not include any other text.",
+      "max_tokens": 128,
+      "temperature": 0.0,
+      "grader": {
+        "type": "contains_all",
+        "needles": [
+          "| Prime | Square |",
+          "| --- | --- |",
+          "| 2 | 4 |",
+          "| 3 | 9 |",
+          "| 5 | 25 |"
+        ]
+      },
+      "good_output": "| Prime | Square |\n| --- | --- |\n| 2 | 4 |\n| 3 | 9 |\n| 5 | 25 |",
+      "bad_output": "| Prime | Square |\n| --- | --- |\n| 2 | 4 |\n| 3 | 9 |\n| 5 | 26 |"
+    },
+    {
+      "id": "bullet-multiples-of-3",
+      "category": "longform",
+      "prompt": "List the first five positive multiples of 3. Each item must be a bullet point starting with '- ' (hyphen space). The format must be '- <multiple> is a multiple of 3'. Do not include any other text.",
+      "max_tokens": 128,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "^- 3 is a multiple of 3\\n- 6 is a multiple of 3\\n- 9 is a multiple of 3\\n- 12 is a multiple of 3\\n- 15 is a multiple of 3$"
+      },
+      "good_output": "- 3 is a multiple of 3\n- 6 is a multiple of 3\n- 9 is a multiple of 3\n- 12 is a multiple of 3\n- 15 is a multiple of 3",
+      "bad_output": "- 3 is a multiple of 3\n- 6 is a multiple of 3\n- 9 is a multiple of 3\n- 12 is a multiple of 3\n- 16 is a multiple of 3"
+    },
+    {
+      "id": "acrostic-hex",
+      "category": "longform",
+      "prompt": "Write a six-line poem. The first letter of each line, when read vertically, must spell the word 'HEXAGON'. The lines must be numbered 1 through 6, followed by a period and a space (e.g., '1. H...'). The rest of the content is irrelevant. Do not include any other text.",
+      "max_tokens": 256,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "^1\\. H.*\\n2\\. E.*\\n3\\. X.*\\n4\\. A.*\\n5\\. G.*\\n6\\. O.*$"
+      },
+      "good_output": "1. Hello\n2. Every\n3. Xylophone\n4. Apple\n5. Grape\n6. Orange",
+      "bad_output": "1. Hello\n2. Every\n3. Xylophone\n4. Apple\n5. Grape\n6. Apple"
+    },
+    {
+      "id": "json-gcd-lcm",
+      "category": "longform",
+      "prompt": "Find the Greatest Common Divisor (GCD) and the Least Common Multiple (LCM) of the numbers 12 and 18. Return a JSON object with keys 'gcd' and 'lcm'. The values must be integers. Do not include markdown code blocks.",
+      "max_tokens": 64,
+      "temperature": 0.0,
+      "grader": {
+        "type": "json",
+        "expect_keys": {
+          "gcd": 6,
+          "lcm": 36
+        }
+      },
+      "good_output": "{\"gcd\": 6, \"lcm\": 36}",
+      "bad_output": "{\"gcd\": 6, \"lcm\": 72}"
+    },
+    {
+      "id": "numbered-even-cubes",
+      "category": "longform",
+      "prompt": "Calculate the cubes of the first four positive even integers (2, 4, 6, 8). List the results on separate lines. Each line must start with the index (1-4), a period, a space, and the result (e.g., '1. 8'). Do not include any other text.",
+      "max_tokens": 128,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "^1\\. 8\\n2\\. 64\\n3\\. 216\\n4\\. 512$"
+      },
+      "good_output": "1. 8\n2. 64\n3. 216\n4. 512",
+      "bad_output": "1. 8\n2. 64\n3. 216\n4. 513"
+    }
+  ]
+}
+```

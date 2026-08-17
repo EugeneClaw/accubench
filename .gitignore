@@ -1,0 +1,11 @@
+*.jsonl
+*.log
+__pycache__/
+*.pyc
+soak-errors.log
+builder-drafts/
+baseline.jsonl
+*.bak
+suites/*.bak
+README_old.md.bak
+*.pyc.bak

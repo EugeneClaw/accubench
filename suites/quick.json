@@ -1,0 +1,175 @@
+{
+  "_doc": "Quick profile: 12 short tasks for fast recipe comparison (60-90s per run). Designed so that 3 runs give a pass-rate with ~+/-5% margin at the worst case (p=0.5, n=36) and ~+/-8% at p=0.9. Use --runs 3 for the minimum confident comparison; --runs 1 for a sanity check; --runs 5 for the strongest signal. Every task is solver in well under 600 tokens by the model in question, so completion-budget mismatch cannot bias the comparison.",
+  "tasks": [
+    {
+      "id": "q-fizzbang",
+      "category": "code",
+      "max_tokens": 500,
+      "temperature": 0.0,
+      "prompt": "Write a Python 3 script in a fenced ```python block that prints the first 30 natural numbers with these substitutions: replace multiples of 4 with 'bang', multiples of 7 with 'fizz', and multiples of both with 'fizzbang'. Do not include any other text.",
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "1\n2\n3\nbang\n5\n6\nfizz\nbang\n9\n10\n11\nbang\n13\nfizz\n15\nbang\n17\n18\n19\nbang\nfizz\n22\n23\nbang\n25\n26\n27\nfizzbang\n29\n30",
+        "timeout_s": 5
+      },
+      "good_output": "```python\nfor i in range(1, 31):\n    if i % 4 == 0 and i % 7 == 0:\n        print('fizzbang')\n    elif i % 4 == 0:\n        print('bang')\n    elif i % 7 == 0:\n        print('fizz')\n    else:\n        print(i)\n```",
+      "bad_output": ""
+    },
+    {
+      "id": "q-reverse",
+      "category": "code",
+      "max_tokens": 300,
+      "temperature": 0.0,
+      "prompt": "Write a Python 3 script in a fenced ```python block that prints the reverse of the string 'hello world'. Do not include any other text.",
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "dlrow olleh",
+        "timeout_s": 5
+      },
+      "good_output": "```python\nprint('hello world'[::-1])\n```",
+      "bad_output": "```python\nprint('hello world')\n```"
+    },
+    {
+      "id": "q-palindrome",
+      "category": "code",
+      "max_tokens": 300,
+      "temperature": 0.0,
+      "prompt": "Write a Python 3 script in a fenced ```python block that prints 'yes' if the string 'racecar' is a palindrome, else 'no'. Do not include any other text.",
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "yes",
+        "timeout_s": 5
+      },
+      "good_output": "```python\ns = 'racecar'\nprint('yes' if s == s[::-1] else 'no')\n```",
+      "bad_output": "```python\ns = 'racecar'\nprint('no' if s == s[::-1] else 'yes')\n```"
+    },
+    {
+      "id": "q-sum-sq",
+      "category": "code",
+      "max_tokens": 300,
+      "temperature": 0.0,
+      "prompt": "Write a Python 3 script in a fenced ```python block that prints the sum of squares of integers from 1 to 10 inclusive, as a single integer. Do not include any other text.",
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "385",
+        "timeout_s": 5
+      },
+      "good_output": "```python\nprint(sum(i*i for i in range(1, 11)))\n```",
+      "bad_output": "```python\nprint(sum(i+i for i in range(1, 11)))\n```"
+    },
+    {
+      "id": "q-fib10",
+      "category": "reasoning",
+      "max_tokens": 600,
+      "temperature": 0.0,
+      "prompt": "The Fibonacci sequence is defined by F(1)=1, F(2)=1, and F(n)=F(n-1)+F(n-2) for n>2. What is F(10)? Reply with only one line: ANSWER: <number>",
+      "grader": {
+        "type": "regex",
+        "pattern": "^ANSWER:\\s*55\\s*$"
+      },
+      "good_output": "ANSWER: 55",
+      "bad_output": "ANSWER: 34"
+    },
+    {
+      "id": "q-wordcount",
+      "category": "reasoning",
+      "max_tokens": 600,
+      "temperature": 0.0,
+      "prompt": "Consider the sentence: 'The quick brown fox jumps over the lazy dog near the red barn at dawn.' How many words are in it? Reply with only one line: ANSWER: <number>",
+      "grader": {
+        "type": "regex",
+        "pattern": "^ANSWER:\\s*15\\s*$"
+      },
+      "good_output": "ANSWER: 15",
+      "bad_output": "ANSWER: 16"
+    },
+    {
+      "id": "q-handshakes",
+      "category": "reasoning",
+      "max_tokens": 600,
+      "temperature": 0.0,
+      "prompt": "At a party of 10 people, every pair of people shakes hands exactly once. How many handshakes happen in total? Reply with only one line: ANSWER: <number>",
+      "grader": {
+        "type": "regex",
+        "pattern": "^ANSWER:\\s*45\\s*$"
+      },
+      "good_output": "ANSWER: 45",
+      "bad_output": "ANSWER: 100"
+    },
+    {
+      "id": "q-prob-coin",
+      "category": "reasoning",
+      "max_tokens": 600,
+      "temperature": 0.0,
+      "prompt": "A fair coin is flipped 3 times. What is the probability of getting exactly 2 heads? Express as a fraction in lowest terms. Reply with only one line: ANSWER: <a/b>",
+      "grader": {
+        "type": "regex",
+        "pattern": "^ANSWER:\\s*3/8\\s*$"
+      },
+      "good_output": "ANSWER: 3/8",
+      "bad_output": "ANSWER: 1/3"
+    },
+    {
+      "id": "q-prime-sieve",
+      "category": "code",
+      "max_tokens": 500,
+      "temperature": 0.0,
+      "prompt": "Write a Python 3 script in a fenced ```python block that prints all prime numbers less than 20 as a single space-separated line. Do not include any other text.",
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "2 3 5 7 11 13 17 19",
+        "timeout_s": 5
+      },
+      "good_output": "```python\nprimes = []\nfor i in range(2, 20):\n    is_prime = True\n    for j in range(2, int(i**0.5)+1):\n        if i % j == 0:\n            is_prime = False\n            break\n    if is_prime:\n        primes.append(i)\nprint(' '.join(map(str, primes)))\n```",
+      "bad_output": "```python\nprimes = []\nfor i in range(3, 20):\n    is_prime = True\n    for j in range(2, i):\n        if i % j == 0:\n            is_prime = False\n            break\n    if is_prime:\n        primes.append(i)\nprint(' '.join(map(str, primes)))\n```"
+    },
+    {
+      "id": "q-json-config",
+      "category": "longform",
+      "max_tokens": 400,
+      "temperature": 0.0,
+      "prompt": "Return a JSON object with exactly these keys: name (string 'effbench'), version (string '0.1.0'), pass_rate (number 0.5). Do not wrap in markdown.",
+      "grader": {
+        "type": "json",
+        "expect_keys": {
+          "name": "effbench",
+          "version": "0.1.0",
+          "pass_rate": 0.5
+        }
+      },
+      "good_output": "{\"name\": \"effbench\", \"version\": \"0.1.0\", \"pass_rate\": 0.5}",
+      "bad_output": "{\"name\": \"effbench\", \"version\": \"0.1.0\", \"pass_rate\": 0.9}"
+    },
+    {
+      "id": "q-markdown-table",
+      "category": "longform",
+      "max_tokens": 400,
+      "temperature": 0.0,
+      "prompt": "Create a markdown table with two columns, header row 'Prime' and 'Square', listing the first three primes and their squares. Use standard markdown table syntax. Do not include any other text.",
+      "grader": {
+        "type": "regex",
+        "pattern": "^\\|\\s*Prime\\s*\\|\\s*Square\\s*\\|\\s*\\n\\|[\\s\\-:|]+\\|\\s*\\n\\|\\s*2\\s*\\|\\s*4\\s*\\|\\s*\\n\\|\\s*3\\s*\\|\\s*9\\s*\\|\\s*\\n\\|\\s*5\\s*\\|\\s*25\\s*\\|\\s*$"
+      },
+      "good_output": "| Prime | Square |\n| --- | --- |\n| 2 | 4 |\n| 3 | 9 |\n| 5 | 25 |",
+      "bad_output": "| Primes | Squares |\n| --- | --- |\n| 2 | 4 |\n| 3 | 9 |"
+    },
+    {
+      "id": "q-bullets",
+      "category": "longform",
+      "max_tokens": 400,
+      "temperature": 0.0,
+      "prompt": "List the first five positive multiples of 3, one per line, each formatted exactly '- <multiple> is a multiple of 3'. Do not include any other text.",
+      "grader": {
+        "type": "regex",
+        "pattern": "^- 3 is a multiple of 3\\n- 6 is a multiple of 3\\n- 9 is a multiple of 3\\n- 12 is a multiple of 3\\n- 15 is a multiple of 3\\s*$"
+      },
+      "good_output": "- 3 is a multiple of 3\n- 6 is a multiple of 3\n- 9 is a multiple of 3\n- 12 is a multiple of 3\n- 15 is a multiple of 3",
+      "bad_output": "- 3\n- 6\n- 9\n- 12\n- 15"
+    }
+  ]
+}

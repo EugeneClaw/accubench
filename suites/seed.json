@@ -1,0 +1,120 @@
+{
+  "tasks": [
+    {
+      "id": "word-count-sentence",
+      "category": "reasoning",
+      "prompt": "Consider this sentence: \"The quick brown fox jumps over the lazy dog near the red barn at dawn.\" How many words are in the sentence? Think carefully, then end your reply with exactly: ANSWER: <number>",
+      "max_tokens": 1200,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "ANSWER:\\s*15\\b"
+      },
+      "good_output": "The sentence contains 15 words.\nANSWER: 15",
+      "bad_output": "The sentence contains 16 words.\nANSWER: 16"
+    },
+    {
+      "id": "arith-chain-discount",
+      "category": "reasoning",
+      "prompt": "A shop applies discounts in sequence to a 240 euro jacket: first 25% off, then an extra 10% off the reduced price, and finally the customer pays with a loyalty card worth 5 euro off. What is the final price in euros? End your reply with exactly: ANSWER: <number>",
+      "max_tokens": 1200,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "ANSWER:\\s*157\\b"
+      },
+      "good_output": "240 \u00d7 0.75 = 180. 180 \u00d7 0.90 = 162. 162 \u2212 5 = 157.\nANSWER: 157",
+      "bad_output": "240 \u00d7 0.75 = 180. 180 \u2212 10 = 170.\nANSWER: 170"
+    },
+    {
+      "id": "logic-three-boxes",
+      "category": "reasoning",
+      "prompt": "Three boxes contain apples, bananas, and cherries \u2014 one fruit per box, no box empty, all different. Box labels are ALL wrong. You may pick one fruit from one box of your choice. Which box must you pick from to determine all contents? Explain briefly, then end with exactly: ANSWER: <the label you pick from>",
+      "max_tokens": 1200,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "ANSWER:\\s*(the\\s+)?(box\\s+labelled|label(led)?\\s+)?apples"
+      },
+      "good_output": "Pick from the box labelled 'apples' \u2014 since the label is wrong, it holds bananas or cherries, which identifies it uniquely and the rest follow.\nANSWER: apples",
+      "bad_output": "Pick from the box labelled 'bananas'.\nANSWER: bananas"
+    },
+    {
+      "id": "seq-triangle-numbers",
+      "category": "reasoning",
+      "prompt": "What is the next number in the sequence: 1, 3, 6, 10, 15, 21, ...? Then give the 20th term of this sequence. End your reply with exactly: ANSWER: <next>, <20th>",
+      "max_tokens": 1200,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "ANSWER:\\s*28,\\s*210\\b"
+      },
+      "good_output": "Triangular numbers: differences grow by 1. Next is 28. The 20th triangular number is 210.\nANSWER: 28, 210",
+      "bad_output": "Differences alternate. Next is 27.\nANSWER: 27, 190"
+    },
+    {
+      "id": "code-fizzbang",
+      "category": "code",
+      "prompt": "Write a Python 3 program in a fenced ```python code block that prints the numbers 1 to 30 inclusive, one per line. For multiples of 4 print 'bang' instead of the number, and for multiples of 7 print 'fizz' instead. For multiples of both print 'fizzbang'. No other output.",
+      "max_tokens": 600,
+      "temperature": 0.0,
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "1\n2\n3\nbang\n5\n6\nfizz\nbang\n9\n10\n11\nbang\n13\nfizz\n15\nbang\n17\n18\n19\nbang\nfizz\n22\n23\nbang\n25\n26\n27\nfizzbang\n29\n30",
+        "timeout_s": 10
+      },
+      "good_output": "```python\nfor i in range(1, 31):\n    if i % 4 == 0 and i % 7 == 0:\n        print('fizzbang')\n    elif i % 4 == 0:\n        print('bang')\n    elif i % 7 == 0:\n        print('fizz')\n    else:\n        print(i)\n```",
+      "bad_output": "```python\nfor i in range(1, 30):\n    if i % 4 == 0:\n        print('bang')\n    elif i % 7 == 0:\n        print('fizz')\n    else:\n        print(i)\n```"
+    },
+    {
+      "id": "code-word-freq",
+      "category": "code",
+      "prompt": "Write a Python 3 program in a fenced ```python code block. It must define this exact sentence: \"the cat sat on the mat the dog sat on the log\" then print each unique word with its count, sorted alphabetically, one 'word: count' per line.",
+      "max_tokens": 600,
+      "temperature": 0.0,
+      "grader": {
+        "type": "code",
+        "language": "python",
+        "expect_stdout": "cat: 1\ndog: 1\nlog: 1\nmat: 1\non: 2\nsat: 2\nthe: 4",
+        "timeout_s": 10
+      },
+      "good_output": "```python\nfrom collections import Counter\ns = \"the cat sat on the mat the dog sat on the log\"\nfor w, c in sorted(Counter(s.split()).items()):\n    print(f\"{w}: {c}\")\n```",
+      "bad_output": "```python\ns = \"the cat sat on the mat the dog sat on the log\"\nfor w in s.split():\n    print(w)\n```"
+    },
+    {
+      "id": "longform-five-rules",
+      "category": "longform",
+      "prompt": "Write exactly five lines. Line N must begin with the word 'Rule' followed by the number N (e.g. 'Rule 1 ...'). Each line must end with a full stop and contain at most 12 words. Topic: kitchen safety. Output nothing except the five lines.",
+      "max_tokens": 400,
+      "temperature": 0.0,
+      "grader": {
+        "type": "regex",
+        "pattern": "(?s)^\\s*Rule 1 .*\\.\\s*\\n\\s*Rule 2 .*\\.\\s*\\n\\s*Rule 3 .*\\.\\s*\\n\\s*Rule 4 .*\\.\\s*\\n\\s*Rule 5 .*\\."
+      },
+      "good_output": "Rule 1 keep knives sharp and store them safely.\nRule 2 never leave hot oil unattended.\nRule 3 wipe spills immediately to prevent slips.\nRule 4 wash hands before handling raw food.\nRule 5 keep a fire blanket near the stove.",
+      "bad_output": "Rule 1: keep knives sharp.\nSecond rule: no oil unattended."
+    },
+    {
+      "id": "json-config-build",
+      "category": "longform",
+      "prompt": "Return a JSON object (and nothing else) with exactly these keys: \"name\" (string \"effbench\"), \"version\" (string \"1.0\"), \"workers\" (number 4), \"tags\" (array containing the two strings \"fast\" and \"honest\").",
+      "max_tokens": 400,
+      "temperature": 0.0,
+      "grader": {
+        "type": "json",
+        "expect_keys": {
+          "name": "effbench",
+          "version": "1.0",
+          "workers": 4,
+          "tags": [
+            "fast",
+            "honest"
+          ]
+        }
+      },
+      "good_output": "{\"name\": \"effbench\", \"version\": \"1.0\", \"workers\": 4, \"tags\": [\"fast\", \"honest\"]}",
+      "bad_output": "{\"name\": \"effbench\", \"version\": \"2.0\", \"workers\": 4}"
+    }
+  ]
+}

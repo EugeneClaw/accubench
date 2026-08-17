@@ -143,7 +143,7 @@ def t_expected_pass():
     check("expected unknown", _expected_pass("made-up-task") is None)
 
 
-def t_radar_honest():
+def t_radar_tested_axes():
     from effbench.report import _radar
     # purpose with tasks: axis drawn
     svg = _radar({"code": {"n": 2, "pass_rate": 1.0}})
@@ -201,7 +201,7 @@ def t_cli():
 def main():
     print("effbench selftest")
     for fn in (t_norm, t_extract, t_graders, t_tasks, t_ledger, t_suite_of,
-               t_fit_for, t_expected_pass, t_radar_honest, t_fail_hints,
+               t_fit_for, t_expected_pass, t_radar_tested_axes, t_fail_hints,
                t_capture_fields, t_cli):
         print(f"[{fn.__name__}]")
         fn()

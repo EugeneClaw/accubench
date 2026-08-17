@@ -71,7 +71,7 @@ def _bar(value, vmax, color=None):
 def _radar(by_purpose, size=240):
     """Radar chart of pass rate by purpose.
 
-    Honest axes: only purposes that actually have tasks get an axis. Purposes
+    Tested axes only: purposes that actually have tasks get an axis. Purposes
     with no tasks in the suite are listed underneath as 'not tested' — a
     missing axis is 'we never asked', never 'the model scored zero'.
     """
@@ -148,7 +148,7 @@ def _headline_card(label, value, sub="", color=None):
 
 
 def _band_chart(agg, band, klass, suite, width=520, height=120):
-    """Your median vs the typical band, drawn honestly.
+    """Your median vs the typical band, with the band's source shown.
 
     Shows the band as a shaded region with lo/hi labels, your median as a
     marker, and mean/p10/p90 as a jitter strip below. The band source is
@@ -328,7 +328,7 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
     by_purpose = agg.get("by_purpose", {})
     suite = suite or suite_of(recs)
 
-    # hardware-fit verdict — honest about band provenance
+    # hardware-fit verdict — band provenance labelled
     src_note = ""
     if fit_band:
         lo, hi, src = fit_band

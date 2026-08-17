@@ -21,7 +21,7 @@ self-contained HTML reports you can compare side by side.
 2. **Deterministic graders.** No LLM-as-judge. Every task has a machine-verifiable
    answer (exact / contains / regex / code-exec / json-schema-lite). A benchmark
    anyone can run must give the same verdict twice.
-3. **Honest timing.** Wall-clock and server-reported `predicted_per_second`
+3. **Measured timing.** Wall-clock and server-reported `predicted_per_second`
    recorded separately; spec-decode draft/accept counts recorded when present;
    cold-start excluded from per-task t/s.
 4. **Append-only ledger.** Results are JSONL, never mutated. Comparisons read
@@ -116,4 +116,4 @@ morning cron renders the report and lists anomalies (drift, failures, stalls).
 
 Multi-server orchestration, LLM-judge tasks, token-level cost tracking,
 Windows-native GPU counters. v1 must be excellent at one thing: measuring
-effective t/s honestly.
+effective t/s with full measurement.

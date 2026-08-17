@@ -104,7 +104,7 @@ DIFFICULTY_DESCRIPTIONS = {
 }
 
 # What a fail means + what to try, keyed by (purpose, difficulty).
-# Tone: honest, non-alarming, actionable. A fail is data, not a disaster.
+# Tone: factual, non-alarming, actionable. A fail is data, not a disaster.
 FAIL_HINTS = {
     ("reasoning", "hard"): (
         "Hard multi-step reasoning — the common weak spot at this model size. "

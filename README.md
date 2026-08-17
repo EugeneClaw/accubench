@@ -19,12 +19,12 @@ The faster quant is 8% faster and 33% worse. Raw benchmarks crown it; effbench d
 
 ```bash
 # Mac / Linux
-curl -fsSL https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.sh | bash
+curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/install.sh | bash
 ```
 
 ```powershell
 # Windows PowerShell
-irm https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.ps1 | iex
+irm https://github.com/EugeneClaw/effbench/releases/latest/download/install.ps1 | iex
 ```
 
 Install it and a menu opens — press 1, get a report in your browser. The one-line install is the only technical step; after that everything is menu-driven.
@@ -51,11 +51,11 @@ Your results, settings and saved reports live in `~/.effbench/` — not scattere
 **Uninstall** is one line too:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/EugeneClaw/effbench/main/uninstall.sh | bash
+curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/uninstall.sh | bash
 ```
 
 ```powershell
-irm https://raw.githubusercontent.com/EugeneClaw/effbench/main/uninstall.ps1 | iex
+irm https://github.com/EugeneClaw/effbench/releases/latest/download/uninstall.ps1 | iex
 ```
 
 **Persist your config?** All customisations live in `~/.effbench/config.json`. Manage it with:

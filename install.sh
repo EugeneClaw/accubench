@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # effbench one-line installer
-# Usage:   curl -fsSL https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.sh | bash
+# Usage:   curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/install.sh | bash
+#          (release-asset URL — not raw.githubusercontent, which rate-limits (429) under load)
 # Result:  /usr/local/bin/effbench ready to run, no Python venv needed.
 set -euo pipefail
 

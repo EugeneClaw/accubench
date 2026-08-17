@@ -1,5 +1,6 @@
 # effbench installer for Windows PowerShell
-# Usage:   irm https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.ps1 | iex
+# Usage:   irm https://github.com/EugeneClaw/effbench/releases/latest/download/install.ps1 | iex
+#          (release-asset URL — not raw.githubusercontent, which rate-limits (429) under load)
 # Result:  $env:LOCALAPPDATA\effbench\bin\effbench.cmd on PATH.
 $ErrorActionPreference = "Stop"
 

@@ -190,7 +190,7 @@ def _hero_cluster(agg, suite):
     )
 
 
-def _band_chart(agg, band, klass, suite, width=520, height=120):
+def _band_chart(agg, band, klass, suite, width=520, height=140):
     """Your median vs the typical band, with the band's source shown.
 
     Shows the band as a shaded region with lo/hi labels, your median as a
@@ -266,15 +266,15 @@ def _band_chart(agg, band, klass, suite, width=520, height=120):
             f'<text x="{gx:.1f}" y="62" text-anchor="middle" '
             f'fill="{DARK["accent"]}" font-size="10">gen {gen:.0f}</text>'
         )
-    note = "wall-clock includes prompt processing; gen is decode-only (cache-invariant)"
-    parts.append(
-        f'<text x="{width-14}" y="112" text-anchor="end" '
-        f'fill="{DARK["ink_dim"]}" font-size="10">{_escape(note)}</text>'
-    )
+    # provenance + explanation on separate lines — they can collide when long
     parts.append(
         f'<text x="14" y="112" fill="{DARK["ink_dim"]}" font-size="10">'
         f'{_escape("band: " + (suite or "this suite") + " on this hardware")}'
         f'{(" — " + src) if src else ""}</text>'
+    )
+    parts.append(
+        f'<text x="14" y="126" fill="{DARK["ink_dim"]}" font-size="10">'
+        f'{_escape("wall-clock includes prompt processing; gen is decode-only (cache-invariant)")}</text>'
     )
     return (
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '

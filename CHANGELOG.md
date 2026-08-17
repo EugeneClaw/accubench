@@ -4,26 +4,23 @@ All notable changes to effbench, newest first.
 
 ## 0.7.0 — 2026-08-17
 
-The reframe — the post-run moment redesigned per the external design mandate (docs/kimi-report-v3.html). "62 beats 200": accuracy is part of the speed equation, and the UI now argues it instead of apologising for it.
+Post-run summary redesigned.
 
-- **Verdict line** — every run opens with a four-state sentence (Flawless, at speed / Fast — and right / Fast — mostly right / Quick — but not trustworthy yet), followed by the facts. Zero sarcasm, zero cheerleading.
-- **Confrontation lanes** — "The number you could post": your checked 62 vs your unchecked 202, side by side, never on one scale. "You own both numbers. Only one survives the follow-up question: 'Yeah — but were the answers right?'"
-- **Speed waterfall** — peak → typical generation → wall → effective, one scale, each drop explained by its cause (best-case vs median / cold prompt processing / the truth discount). Absorbs the old micro-bars and fit line.
-- **Pass ticks** — one tick per task, ✓/✕, failures named with a fix target. Replaces the pass-rate arc as the primary pass display. Aria-labelled as one image.
-- **Champion ceremony** — the ★ badge graduated: first run = "FIRST BASELINE — CHAMPION", beating your own history = "NEW CHAMPION".
-- **Killed**: the forever-sweeping segment (a spinner in a suit — steady 35% mint fill now; the elapsed clock and live pass tally carry the "not hung" job), the tone-matched brag line, the always-on count-up (fresh results only now).
-- **Live pass tally** during runs ("passed 7/7 so far") and amber fail-aware rail segments.
+- **Verdict line** — each run opens with a one-line verdict (four states, by pass rate) followed by the run facts: `62 checked tok/s · 11/12 graded · speed discounted 8% for wrong answers.`
+- **Confrontation lanes** — "The number you could post": effective speed beside generation-only peak speed, two separate cards, never on a shared scale. Each lane carries its measurement basis (tasks graded, wall-clock / generation-only, best case).
+- **Speed waterfall** — peak generation → typical generation → wall clock → effective, one scale, each drop labelled by cause (best-case vs median; cold prompt processing; × pass rate).
+- **Pass ticks** — one tick per task (✓/✕); failed tasks listed by name with a fix-target hint. Replaces the pass-rate arc.
+- **Run-history milestones** — first run of a suite shows "FIRST BASELINE"; beating the suite's best effective speed shows "NEW CHAMPION".
+- **Run screen** — in-flight progress segment shows a steady fill (was a repeating sweep); live pass tally ("passed 7/7 so far"); rail segments of failed tasks marked amber.
+- **Removed**: tone-matched summary sentence (v0.6.1), always-on count-up (fresh results only now), star badge.
 
 ## 0.6.1 — 2026-08-17
 
-The effective-speed release — accuracy stops being a footnote and becomes part of the number itself.
+Minor update: effective-speed presentation and bug fixes.
 
-- **Equation chip** on report hero and run summary: `67 × 92% = 62 tok/s` — the number explains itself; nobody needs to know what a pass rate is to see accuracy multiplying speed.
-- **Brag line**: one plain-English sentence per run that celebrates the trade — "Speed you can trust… Others would headline the 143 tok/s generation number; that one pretends wrong answers are free."
-- **Dopamine moment**: the effective-speed number counts up on completion (900 ms, reduced-motion aware), and a `★ new best` badge pops when the run beats every prior run of the same suite.
-- **Fit line reframed**: a cold wall median no longer reads as "slower than typical" in amber — when gen-only sits inside the band, the UI says so in mint: "server in-band — gen-only 143 tok/s sits inside the typical band; wall is cold-run prompt processing".
-- **Band provenance** now ends "· one rig's soak, not a crowd's average" (v0.6.0 fixed the two-line overlap this way).
-- `/api/tags` exposes `eff_tps` + `suite` per run (powers new-best detection).
+- **Equation chip** — summary and report hero now show the arithmetic: raw wall speed × pass rate = effective speed (e.g. `67 × 92% = 62 tok/s`).
+- **Fix**: band-chart provenance and cache note were overprinted on one line in the report; now stacked (chart height 120 → 140). Originally fixed for v0.6.0 but shipped without a version increment; this release carries it.
+- **Fix**: cold runs with generation-only speed inside the reference band were flagged "slower than typical" in amber; now reported as in-band with the cold-run cause noted.
 
 ## 0.6.0 — 2026-08-17
 

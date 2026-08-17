@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>62 beats 200 — a UX mandate for effbench</title>
+<style>
+/* ============================================================
+   EFFBENCH — DESIGN MANDATE v1.0
+   This document is a work sample: it uses the exact tokens,
+   components and copy it specifies. One file. No external
+   assets. Everything runs offline.
+   ============================================================ */
+:root{
+  --void:#0A0C0D; --panel:#121517; --panel2:#171C1E;
+  --hair:#23292C; --hair2:#323A3D;
+  --ink:#E9EDED; --dim:#A9B3B5; --faint:#828D8F;
+  --mint:#6FF2B6; --mint-ink:#06231A; --mint-dim:#3FA97E;
+  --amber:#F0B26E; --red:#F07575;
+  --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --m1:120ms ease-out; --m2:240ms ease;
+  --maxw:960px;
+}
+@media print{
+  :root{ --void:#FFFFFF; --panel:#FFFFFF; --panel2:#F5F7F7; --hair:#D8DEDE; --hair2:#C4CCCC;
+    --ink:#111615; --dim:#333B3A; --faint:#4A5352; --mint:#0B7A4C; --mint-dim:#0B7A4C; --amber:#8A5A17; }
+}
+*{box-sizing:border-box; margin:0; padding:0}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{transition:none !important; animation:none !important} }
+body{
+  background:var(--void); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--mint); color:var(--mint-ink)}
+.num, .mono{font-family:var(--mono); font-variant-numeric:tabular-nums lining-nums}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+a{color:var(--mint); text-decoration:none}
+a:hover{text-decoration:underline}
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible{
+  outline:1px solid var(--mint); outline-offset:2px; border-radius:2px;
+}
+/* ---------- masthead ---------- */
+.mast{border-bottom:1px solid var(--hair); padding:28px 0 34px}
+.brand{font-family:var(--mono); font-size:13px; letter-spacing:.14em; color:var(--dim); text-transform:uppercase}
+.brand b{color:var(--mint); font-weight:700}
+.mast h1{font-family:var(--mono); font-weight:700; font-size:clamp(34px,6vw,56px); letter-spacing:-.01em; margin:14px 0 10px}
+.mast h1 .beat{color:var(--mint)}
+.mast .sub{color:var(--dim); max-width:62ch; font-size:16px}
+.meta{display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:18px; font-family:var(--mono); font-size:11.5px; color:var(--faint)}
+.meta span b{color:var(--dim); font-weight:400}
+.index{border-bottom:1px solid var(--hair); padding:12px 0; overflow-x:auto; white-space:nowrap}
+.index a{font-family:var(--mono); font-size:11.5px; color:var(--faint); margin-right:18px}
+.index a:hover{color:var(--mint); text-decoration:none}
+/* ---------- sections ---------- */
+section{padding:44px 0; border-bottom:1px solid var(--hair)}
+.secno{font-family:var(--mono); font-size:12px; letter-spacing:.14em; color:var(--mint); text-transform:uppercase; margin-bottom:8px}
+h2{font-size:22px; font-weight:650; letter-spacing:-.01em; margin-bottom:14px}
+h3{font-size:14px; font-weight:650; margin:26px 0 8px}
+p{max-width:70ch; color:var(--dim); margin-bottom:10px}
+p.ink{color:var(--ink)}
+strong{color:var(--ink); font-weight:650}
+.lede{font-size:17px; color:var(--ink); max-width:66ch}
+.kicker{
+  font-family:var(--mono); font-size:clamp(19px,3.4vw,28px); line-height:1.35;
+  color:var(--ink); border-left:2px solid var(--mint); padding:6px 0 6px 18px; margin:22px 0;
+}
+.kicker em{color:var(--mint); font-style:normal}
+ul.tight{margin:8px 0 14px 18px; color:var(--dim)}
+ul.tight li{margin-bottom:7px; max-width:68ch}
+ul.tight li::marker{color:var(--mint)}
+.cap{font-family:var(--mono); font-size:11.5px; color:var(--faint); line-height:1.45}
+.cap b{color:var(--dim); font-weight:400}
+/* ---------- tables ---------- */
+table{width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:13px}
+th{font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--faint);
+   text-align:left; padding:8px 12px 8px 0; border-bottom:1px solid var(--hair2); font-weight:400}
+td{padding:9px 12px 9px 0; border-bottom:1px solid var(--hair); color:var(--dim); vertical-align:top}
+td:first-child{color:var(--ink)}
+td .mono{font-size:12px}
+.pill{display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; padding:2px 7px;
+      border:1px solid var(--hair2); border-radius:3px; color:var(--dim); white-space:nowrap}
+.pill.kill{color:var(--red); border-color:var(--red)}
+.pill.demote{color:var(--amber); border-color:var(--amber)}
+.pill.keep{color:var(--mint); border-color:var(--mint-dim)}
+.pill.absorb{color:var(--dim)}
+/* ---------- prototype frames ---------- */
+.proto{border:1px solid var(--hair2); border-radius:8px; background:var(--panel); margin:18px 0 6px; overflow:hidden}
+.proto-tag{display:flex; justify-content:space-between; gap:10px; padding:8px 14px; border-bottom:1px solid var(--hair);
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint)}
+.proto-tag b{color:var(--mint); font-weight:400}
+.proto-body{padding:22px 20px}
+.proto-foot{padding:8px 14px; border-top:1px solid var(--hair)}
+.buildnote{font-family:var(--mono); font-size:11px; color:var(--faint); margin-top:14px}
+.buildnote b{color:var(--amber); font-weight:400}
+/* ---------- THE VERDICT hero ---------- */
+.verdict-line{font-family:var(--mono); font-size:13px; letter-spacing:.16em; text-transform:uppercase; color:var(--mint); margin-bottom:10px}
+.hero-num{font-family:var(--mono); font-weight:700; font-size:64px; line-height:1; letter-spacing:-.02em; color:var(--ink)}
+.hero-num .unit{font-size:20px; font-weight:400; color:var(--dim); margin-left:8px}
+.hero-num .adj{font-size:14px; font-weight:400; color:var(--mint); margin-left:4px; letter-spacing:.08em}
+.hero-gloss{font-size:14px; color:var(--dim); margin:8px 0 12px}
+.eqchip{display:inline-block; font-family:var(--mono); font-size:13px; color:var(--ink);
+  border:1px solid var(--hair2); border-radius:4px; padding:5px 10px; background:var(--panel2)}
+.src{margin-top:12px}
+/* ---------- confrontation lanes ---------- */
+.lanes{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px}
+.lane{border-radius:6px; padding:16px 16px 14px}
+.lane.checked{border:1px solid var(--mint-dim); background:rgba(111,242,182,.05)}
+.lane.unchecked{border:1px dashed var(--hair2)}
+.lane .l-tag{font-family:var(--mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; margin-bottom:8px}
+.lane.checked .l-tag{color:var(--mint)}
+.lane.unchecked .l-tag{color:var(--faint)}
+.lane .l-num{font-family:var(--mono); font-weight:700; font-size:34px; font-variant-numeric:tabular-nums; line-height:1}
+.lane.checked .l-num{color:var(--ink)}
+.lane.unchecked .l-num{color:var(--faint)}
+.lane .l-num .u{font-size:14px; font-weight:400; margin-left:5px; color:var(--dim)}
+.lane.unchecked .l-num .u{color:var(--faint)}
+.lane .l-cap{font-size:12.5px; color:var(--dim); margin-top:9px; line-height:1.5}
+.lane.unchecked .l-cap{color:var(--faint)}
+.confront-kicker{margin-top:16px; font-size:14.5px; color:var(--ink); max-width:60ch}
+.confront-kicker em{color:var(--mint); font-style:normal}
+/* ---------- waterfall ---------- */
+.wf{margin-top:16px}
+.wf-row{display:grid; grid-template-columns:150px 1fr 64px; align-items:center; gap:12px; margin-bottom:6px}
+.wf-label{font-family:var(--mono); font-size:12px; color:var(--dim); text-align:right}
+.wf-track{height:22px; background:var(--panel2); border-radius:3px; position:relative}
+.wf-bar{height:100%; border-radius:3px; width:0; transition:width 900ms cubic-bezier(.2,.7,.2,1)}
+.wf-bar.unchecked{background:transparent; border:1px solid var(--hair2)}
+.wf-bar.wall{background:#3A4245}
+.wf-bar.eff{background:var(--mint)}
+.wf-val{font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums; color:var(--dim)}
+.wf-val.mint{color:var(--mint)}
+.wf-delta{grid-column:2 / 4; font-family:var(--mono); font-size:11px; color:var(--faint); padding:1px 0 7px 2px}
+.wf-delta b{color:var(--dim); font-weight:400}
+.wf-legend{display:flex; gap:18px; margin-top:12px; font-family:var(--mono); font-size:11px; color:var(--faint)}
+.wf-legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px; font-style:normal}
+.wf-legend .hollow i{border:1px solid var(--hair2)}
+.wf-legend .solid i{background:var(--mint)}
+/* ---------- ticks ---------- */
+.ticks{display:flex; gap:6px; margin:14px 0 10px; flex-wrap:wrap}
+.tick{width:18px; height:18px; border-radius:3px; display:grid; place-items:center;
+  font-family:var(--mono); font-size:11px; font-weight:700}
+.tick.pass{background:var(--mint); color:var(--mint-ink)}
+.tick.fail{background:transparent; border:1px solid var(--amber); color:var(--amber)}
+.tick.pending{border:1px solid var(--hair2)}
+.fail-line{font-size:13.5px; color:var(--ink); margin-top:6px}
+.fail-line .fx{color:var(--amber); font-family:var(--mono); font-size:12.5px}
+/* ---------- run rail (static spec) ---------- */
+.rail{display:flex; gap:3px; margin:16px 0 10px}
+.seg{flex:1; height:6px; border-radius:2px; background:var(--panel2); border:1px solid var(--hair)}
+.seg.done{background:var(--mint); border-color:var(--mint)}
+.seg.live{background:rgba(111,242,182,.35); border-color:var(--mint-dim)}
+.seg.failed{background:var(--amber); border-color:var(--amber)}
+.runstat{display:flex; justify-content:space-between; gap:12px; font-family:var(--mono); font-size:12px; color:var(--dim); flex-wrap:wrap}
+.runstat .ok{color:var(--mint)}
+/* ---------- garage ceremony ---------- */
+.cer-btns{display:flex; gap:8px; flex-wrap:wrap; margin:16px 0 14px}
+.cer-btns button{font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; padding:6px 12px; border-radius:4px;
+  border:1px solid var(--hair2); background:var(--panel2); color:var(--dim); cursor:pointer; transition:var(--m1)}
+.cer-btns button:hover{color:var(--ink); border-color:var(--dim)}
+.cer-btns button.on{color:var(--mint); border-color:var(--mint-dim); background:rgba(111,242,182,.06)}
+.cer-card{border:1px solid var(--hair2); border-radius:6px; padding:18px; background:var(--panel2); min-height:118px}
+.cer-tag{font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; margin-bottom:8px}
+.cer-tag.mint{color:var(--mint)} .cer-tag.amber{color:var(--amber)} .cer-tag.dim{color:var(--faint)}
+.cer-big{font-family:var(--mono); font-weight:700; font-size:26px; font-variant-numeric:tabular-nums; margin-bottom:8px}
+.cer-body{font-size:13.5px; color:var(--dim); max-width:58ch}
+.receipt{margin-top:14px; border:1px dashed var(--hair2); border-radius:6px; padding:14px 16px; font-family:var(--mono); font-size:12.5px; color:var(--dim); line-height:1.6}
+.receipt b{color:var(--ink); font-weight:400}
+/* ---------- translator ---------- */
+.tr-row{display:flex; gap:12px; align-items:baseline; flex-wrap:wrap; margin:14px 0}
+.tr-row label{font-family:var(--mono); font-size:12px; color:var(--dim)}
+.tr-row input{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:16px; width:110px;
+  background:var(--panel2); border:1px solid var(--hair2); border-radius:4px; color:var(--ink); padding:7px 10px}
+.tr-out{margin-top:6px}
+.tr-line{font-size:14.5px; color:var(--ink); margin:12px 0; max-width:62ch}
+.tr-line b{color:var(--mint); font-weight:650}
+.tr-kick{font-size:14px; color:var(--ink); border-left:2px solid var(--amber); padding-left:12px; margin:14px 0 8px; max-width:56ch}
+/* ---------- misc ---------- */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px}
+.law{display:grid; grid-template-columns:34px 1fr; gap:14px; padding:13px 0; border-bottom:1px solid var(--hair)}
+.law:last-child{border-bottom:none}
+.law .n{font-family:var(--mono); font-size:13px; color:var(--mint)}
+.law b{display:block; color:var(--ink); font-weight:650; margin-bottom:3px}
+.law span{color:var(--dim); font-size:13.5px}
+pre.term{font-family:var(--mono); font-size:12px; line-height:1.7; color:var(--dim); background:var(--panel);
+  border:1px solid var(--hair); border-radius:6px; padding:16px; overflow-x:auto; margin:12px 0}
+pre.term .m{color:var(--mint)} pre.term .a{color:var(--amber)}
+code.k{font-family:var(--mono); font-size:12px; background:var(--panel2); border:1px solid var(--hair); border-radius:3px; padding:1px 6px; color:var(--ink)}
+.foot{padding:26px 0 60px; font-family:var(--mono); font-size:11.5px; color:var(--faint); line-height:1.7}
+.foot b{color:var(--dim); font-weight:400}
+/* ---------- responsive ---------- */
+@media (max-width:640px){
+  .lanes{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .hero-num{font-size:44px}
+  .wf-row{grid-template-columns:110px 1fr 52px}
+  .wf-label{font-size:11px}
+  section{padding:34px 0}
+  .wrap{padding:0 16px}
+}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="wrap">
+    <div class="brand"><b>eff</b>bench · design commission · v1.0 · final</div>
+    <h1>62 <span class="beat">beats</span> 200.</h1>
+    <p class="sub">A full UX mandate for effbench: what stays, what dies, what's missing — and how the truthful
+    number becomes the number users brag about. Written to be built from, not admired.</p>
+    <div class="meta">
+      <span>author · <b>Kimi, UX consultant — full mandate</b></span>
+      <span>status · <b>buildable as written</b></span>
+      <span>data · <b>reference rig, v0.6.1 (real) · mock elements labeled</b></span>
+      <span>format · <b>one file · zero external requests</b></span>
+    </div>
+  </div>
+</header>
+
+<nav class="index"><div class="wrap">
+  <a href="#call">00 the call</a><a href="#diag">01 diagnosis</a><a href="#thesis">02 thesis</a>
+  <a href="#laws">03 laws</a><a href="#verdict">04 the verdict</a><a href="#run">05 run screen</a>
+  <a href="#garage">06 the garage</a><a href="#translator">07 translator</a><a href="#report">08 report</a>
+  <a href="#trust">09 trust ladder</a><a href="#spec">10 spec</a><a href="#copy">11 copy deck</a>
+  <a href="#build">12 build order</a><a href="#cuts">13 cut list</a><a href="#beyond">14 beyond §5</a>
+</div></nav>
+
+<main class="wrap">
+
+<!-- ============================================================ -->
+<section id="call">
+  <div class="secno">00 · The call</div>
+  <p class="lede">effbench does not have a numbers problem. It has a <strong>framing problem</strong>, and framing
+  is design. The five moves below are the whole mandate; everything after this section is implementation.</p>
+  <ul class="tight">
+    <li><strong>Indict, don't defend.</strong> The product already measures the user's own 198 tok/s peak. Show it,
+    own it, label it <em>unchecked</em> — and subordinate it. The user stops envying the internet's number the moment
+    they realise they own that number too, and know what it's worth.</li>
+    <li><strong>Every speed wears an adjective.</strong> Checked vs unchecked becomes the product's vocabulary —
+    on every number, in every view. The non-technical user walks away with a question that wins arguments:
+    "yeah — but were the answers right?"</li>
+    <li><strong>Kill the cross-rig "typical."</strong> An n=1 soak from a different rig is a lie with a footnote.
+    Replace it with <strong>Your Normal</strong> (the user's own history, n≥3) and demote the soak to a labelled
+    appendix. Answer "how do we know what's typical?" truthfully: <em>we can't yet — here's what we can know.</em></li>
+    <li><strong>Every run pays out.</strong> Today only record-breaks get ceremony; ~90% of runs end in silence.
+    The Garage makes every run a win or a lesson: champion vs challenger, recipe notes, negative results framed
+    as knowledge purchased.</li>
+    <li><strong>Hand the user the argument.</strong> A Claims Translator ("seen a 200 t/s screenshot? check it")
+    and a copy-ready Verdict Receipt turn private reassurance into public advocacy — with provenance attached,
+    always.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ -->
+<section id="diag">
+  <div class="secno">01 · Diagnosis</div>
+  <h2>Why 62 feels bad — and why that's a design bug, not a math bug</h2>
+  <p>The user's words: <em>"I am slightly concerned that despite all the model tuning, we still get low numbers…
+  How do we know what typical is?"</em> Six failures produce that feeling. None is in the measurement.</p>
+
+  <h3>1. The product explains; it never argues.</h3>
+  <p>The equation chip <code class="k">67 × 92% = 62</code> is arithmetic. The user doesn't doubt the math — they
+  doubt whether the metric <em>matters</em>, because the screen never says why it matters, never says what the
+  200 tok/s screenshots actually are. Explanation convinces engineers. Feelings need an advocate.</p>
+
+  <h3>2. The comparison vacuum.</h3>
+  <p>We ship almost no context, so users import context from the least truthful source available: social media
+  screenshots. <strong>If you don't supply the frame, the internet supplies its own.</strong> The fix is not
+  borrowed reference data (we have none that's truthful) — it's making the user's <em>own</em> data do the arguing,
+  and giving them a tool to interrogate foreign claims.</p>
+
+  <h3>3. The n=1 band is a lie with a footnote.</h3>
+  <p>"One rig's soak, not a crowd's average" is a good label on a bad idea. A cross-rig "typical" derived from a
+  single machine will be misread as a verdict no matter how it's captioned — the user literally did misread it,
+  asking "how do we know what typical is?" Labels don't launder thin data. effbench's one asset is being believed;
+  this band spends it.</p>
+
+  <h3>4. Ninety percent of runs end in silence.</h3>
+  <p>The ★ badge fires only when a run beats every prior run. Tweakers run dozens of <em>losing</em> experiments —
+  each one purchased information, none of it rewarded. The product's emotional surface is mostly switched off.
+  A benchmark that only celebrates records teaches users to chase records — the exact vanity loop we exist to kill.</p>
+
+  <h3>5. The forever-sweep is a spinner in a suit.</h3>
+  <p>An in-flight segment that sweeps forever claims progress it doesn't have. An instrument that guesses teaches
+  users to distrust instruments. We have (or can earn) real duration data — show elapsed, show an ETA only once
+  history justifies it.</p>
+
+  <h3>6. The numbers have no adjectives.</h3>
+  <p>The UI renders "62 tok/s" and "198 tok/s" as if they were the same kind of thing. They are not. One is
+  <strong>checked</strong> — every answer graded. One is <strong>unchecked</strong> — speed with no idea whether the
+  words were right. Until the screen never lets them look alike, the user will keep comparing our smallest truthful
+  number against the internet's largest hollow one.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="thesis">
+  <div class="secno">02 · The thesis</div>
+  <div class="kicker">Don't defend the smaller number.<br><em>Indict the bigger one.</em></div>
+  <p class="ink">The reference rig posts a raw peak of <span class="num">198 tok/s</span> — measured, this run, on the
+  user's own hardware. That is the same species of number as every "200 t/s" screenshot on the internet:
+  generation-only, best-case, zero answers graded. The user already owns the number they envy. They just needed
+  someone to show it to them wearing the right label.</p>
+  <p>So the post-run moment stops being a scoreboard and becomes a <strong>verdict</strong>: a sentence first, the
+  number as evidence, and the user's own peak displayed beneath — hollow, dashed, unchecked. The dopamine the brief
+  asks for doesn't come from inflating 62. It comes from the user realising, viscerally: <em>I could post 198 too.
+  I know what it's worth. Mine is the one that survives scrutiny.</em> That feeling is superiority through truthfuly —
+  and it's the only feeling this brand is allowed to sell.</p>
+  <p>One consequence, stated plainly because the brief asked me to argue: the feedback says <em>"we DO NOT want the
+  user thinking they are getting lower numbers."</em> Agreed — but the method is not to hide the gap or soften the
+  comparison. The method is to put 198 on screen, owned and indicted. Hiding it leaves the user alone with Reddit.
+  Showing it gives them the win.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="laws">
+  <div class="secno">03 · Design laws</div>
+  <h2>Seven laws, binding on every screen, report and terminal line</h2>
+  <div class="law"><div class="n">L1</div><div><b>The sentence is the headline; the number is the evidence.</b><span>Every result opens with a verdict in plain language. The hero numeral proves it. Never a bare number asking to be compared to a screenshot.</span></div></div>
+  <div class="law"><div class="n">L2</div><div><b>Every speed wears an adjective.</b><span>Checked (answers graded) or unchecked (not). No bare tok/s anywhere — UI, report, terminal, share text. Mint is reserved for checked.</span></div></div>
+  <div class="law"><div class="n">L3</div><div><b>No number without provenance. Visible, not hovered.</b><span>Every figure carries a one-line source caption from the trust ladder (§09). Tooltips don't count. If it prints, it prints with its source.</span></div></div>
+  <div class="law"><div class="n">L4</div><div><b>Your rig is the only fair fight.</b><span>Comparisons start with your own history. Everything external is labelled reference, community, or claim — never "typical," never charted on the same axis as your measured data.</span></div></div>
+  <div class="law"><div class="n">L5</div><div><b>Every run pays out.</b><span>Win → ceremony. Lose → knowledge, logged and named. First run → baseline, the start of the story. No neutral outcomes, no silent runs.</span></div></div>
+  <div class="law"><div class="n">L6</div><div><b>Failures are targets, not stains.</b><span>A failed task is named, with the grader's reason, framed as the next thing to beat. Amber, not red. Red is reserved for product errors.</span></div></div>
+  <div class="law"><div class="n">L7</div><div><b>Truth is the brand.</b><span>When we don't know — typicality, other people's rigs — the product says so in words, then shows what we do know. Confidence about our own ignorance is the feature.</span></div></div>
+</section>
+
+<!-- ============================================================ -->
+<section id="verdict">
+  <div class="secno">04 · The Verdict — the post-run moment, redesigned</div>
+  <h2>The payoff screen is the product. This is the build target.</h2>
+  <p>Live prototype, running on the reference rig's real quick-suite numbers (62 effective · 67 wall · 141/192/198
+  generation · 92% pass, 11/12). Task names in the ticks are illustrative and labelled as such. Everything you see
+  is final copy, final hierarchy, final dimensions.</p>
+
+  <div class="proto">
+    <div class="proto-tag"><span><b>LIVE PROTOTYPE</b> · build target, not mockup</span><span>post-run · quick suite</span></div>
+    <div class="proto-body">
+
+      <!-- verdict + hero -->
+      <div class="verdict-line" id="pv-verdict">Fast — and right.</div>
+      <div class="hero-num"><span id="pv-num">0</span><span class="unit">tok/s</span><span class="adj">· CHECKED</span></div>
+      <div class="hero-gloss">effective speed — correct answers per second</div>
+      <div class="eqchip">67 wall × 92% pass = 62</div>
+      <div class="cap src">measured this run · quick suite · 12 tasks · nothing left this machine</div>
+      <div class="buildnote"><b>BUILD NOTE</b> — verdict line 13px mono caps .16em mint · numeral 64px/700 mono tabular
+        (44px ≤560px) · count-up 900ms cubic-bezier(.2,.7,.2,1), <em>fresh results only</em>, instant on revisit,
+        instant under reduced-motion · equation chip demoted to caption (it explains; the lanes below argue)
+        <button class="pill" id="pv-replay" style="cursor:pointer;background:none">↻ replay count-up</button></div>
+
+      <!-- confrontation -->
+      <h3 style="margin-top:30px">The number you could post</h3>
+      <div class="lanes">
+        <div class="lane checked">
+          <div class="l-tag">Checked · yours</div>
+          <div class="l-num">62<span class="u">tok/s</span></div>
+          <div class="l-cap">12 tasks graded · 11 passed · wall-clock, cold start.<br>The speed of answers you can use.</div>
+        </div>
+        <div class="lane unchecked">
+          <div class="l-tag">Unchecked · also yours</div>
+          <div class="l-num">198<span class="u">tok/s</span></div>
+          <div class="l-cap">generation-only · best case · zero answers graded.<br>This is how the screenshots are made.</div>
+        </div>
+      </div>
+      <p class="confront-kicker">You own both numbers. Only one survives the follow-up question:
+      <em>"Yeah — but were the answers right?"</em></p>
+      <div class="cap src">both figures measured this run · unchecked peak is not comparable to checked speed — that is the point</div>
+      <div class="buildnote"><b>BUILD NOTE</b> — lanes never share a scale or axis (that would imply comparability);
+        checked = solid mint border + ink numeral, unchecked = dashed hairline + faint numeral. Stack ≤560px,
+        checked first. This module replaces the brag line and does the job the equation chip was asked to do alone.</div>
+
+      <!-- waterfall -->
+      <h3 style="margin-top:30px">Where the speed goes</h3>
+      <div class="wf" id="pv-wf">
+        <div class="wf-row">
+          <div class="wf-label">peak generation</div>
+          <div class="wf-track"><div class="wf-bar unchecked" data-w="99"></div></div>
+          <div class="wf-val">198</div>
+          <div class="wf-delta">−57 · best case vs typical — p90 is 192, median is what you actually get</div>
+        </div>
+        <div class="wf-row">
+          <div class="wf-label">typical generation</div>
+          <div class="wf-track"><div class="wf-bar unchecked" data-w="70.5"></div></div>
+          <div class="wf-val">141</div>
+          <div class="wf-delta">−74 · cold prompt processing — this run ingested the prompt cold; tunable: context length, cache warmth</div>
+        </div>
+        <div class="wf-row">
+          <div class="wf-label">wall clock</div>
+          <div class="wf-track"><div class="wf-bar wall" data-w="33.5"></div></div>
+          <div class="wf-val">67</div>
+          <div class="wf-delta">−5 · the truthfuly discount — × 0.92 pass rate. <b>The only discount that means the answers were checked.</b></div>
+        </div>
+        <div class="wf-row">
+          <div class="wf-label">effective · checked</div>
+          <div class="wf-track"><div class="wf-bar eff" data-w="31"></div></div>
+          <div class="wf-val mint">62</div>
+        </div>
+        <div class="wf-legend"><span class="hollow"><i></i>unchecked</span><span class="solid"><i></i>checked</span></div>
+      </div>
+      <div class="cap src">all four figures measured this run · one scale, 0–200 tok/s</div>
+      <div class="buildnote"><b>BUILD NOTE</b> — absorbs the old micro-bars cluster and the fit line's job (cold-run
+        reframe now lives in the wall bar's cause caption). Bar height 22px, track radius 3px, labels 12px mono
+        right-aligned in a 150px column (110px ≤560px). Deltas are the teaching layer: each names a cause and, where
+        tunable, the lever. Animate width once on entry; static under reduced-motion.</div>
+
+      <!-- ticks -->
+      <h3 style="margin-top:30px">The pass, made visible</h3>
+      <div class="ticks" role="img" aria-label="11 of 12 tasks passed">
+        <span class="tick pass">✓</span><span class="tick pass">✓</span><span class="tick pass">✓</span>
+        <span class="tick pass">✓</span><span class="tick pass">✓</span><span class="tick pass">✓</span>
+        <span class="tick pass">✓</span><span class="tick fail">✕</span><span class="tick pass">✓</span>
+        <span class="tick pass">✓</span><span class="tick pass">✓</span><span class="tick pass">✓</span>
+      </div>
+      <div class="fail-line">11 of 12 passed. The failure is named, not hidden:
+        <span class="fx">✕ structure · json_schema — returned prose, expected a JSON object.</span>
+        That's your next fix target.</div>
+      <div class="cap src">counts measured this run · task names illustrative · expected-fail tasks render as hollow ticks with their badge</div>
+      <div class="buildnote"><b>BUILD NOTE</b> — ticks 18px, gap 6px, wrap 6×2 ≤560px. Replaces the 240° arc as the
+        primary pass display: the arc is decoration, the ticks carry <em>which</em> task failed — the only actionable
+        part. Arc may survive in the report as a secondary flourish; it dies here without grief.</div>
+
+    </div>
+    <div class="proto-foot cap">prototype data: reference rig quick run (real per §3 of brief) · failed-task name illustrative</div>
+  </div>
+
+  <h3>Verdict line logic — four states, zero sarcasm</h3>
+  <table>
+    <tr><th>condition</th><th>headline</th><th>sub-line (exact template)</th></tr>
+    <tr><td>pass = 100%</td><td class="mono">Flawless, at speed.</td><td class="mono">{eff} checked tok/s · {n}/{n} tasks · nothing discounted.</td></tr>
+    <tr><td>pass ≥ 90%</td><td class="mono">Fast — and right.</td><td class="mono">{eff} checked tok/s · {p}/{n} graded · speed discounted {100−pass}% for wrong answers.</td></tr>
+    <tr><td>pass 70–89%</td><td class="mono">Fast — mostly right.</td><td class="mono">{eff} checked tok/s · {p}/{n} graded · fix target: {first failed task}.</td></tr>
+    <tr><td>pass &lt; 70%</td><td class="mono">Quick — but not trustworthy yet.</td><td class="mono">{eff} checked tok/s · {100−pass}% of speed spent on wrong answers · change model or quant before tuning anything else.</td></tr>
+  </table>
+  <p class="cap">The low-pass state never cheers and never scolds — it redirects the tuning instinct at the model. Tone-matched quips die here; specificity is the personality.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="run">
+  <div class="secno">05 · The run screen</div>
+  <h2>True progress, live stakes</h2>
+  <p>Keep the segmented rail and fading task rows — they're good. Kill the forever-sweep. The run screen's job is to
+  make 15 seconds (or 4 minutes) feel like watching evidence accumulate, not waiting for a spinner.</p>
+
+  <div class="proto">
+    <div class="proto-tag"><span><b>STATIC SPEC</b> · annotated</span><span>run in progress</span></div>
+    <div class="proto-body">
+      <div class="rail" aria-label="task 8 of 12 running, 7 passed so far">
+        <span class="seg done"></span><span class="seg done"></span><span class="seg done"></span>
+        <span class="seg done"></span><span class="seg done"></span><span class="seg done"></span>
+        <span class="seg done"></span><span class="seg live"></span><span class="seg"></span>
+        <span class="seg"></span><span class="seg"></span><span class="seg"></span>
+      </div>
+      <div class="runstat">
+        <span>task 8/12 · structure · json_schema · elapsed 0:41 · usually 0:52</span>
+        <span class="ok">passed 7/7 so far</span>
+      </div>
+      <div class="buildnote"><b>BUILD NOTE</b> — segments: resolved-pass solid mint, resolved-fail amber, in-flight
+        steady 35% mint (<em>no sweep, no motion</em> — a pulse is permitted, static under reduced-motion), upcoming
+        hollow. Status line is one row, wraps on phone. <b>"usually 0:52" appears only with ≥2 prior runs of this
+        suite on this setup</b> — an ETA we haven't earned is the sweep in a new hat. Live pass tally gives early
+        dopamine and makes waiting informative; it is the single cheapest emotional upgrade in the product.</div>
+    </div>
+  </div>
+
+  <h3>States</h3>
+  <table>
+    <tr><th>state</th><th>exact behaviour &amp; copy</th></tr>
+    <tr><td>idle · never run</td><td>Run panel + pitch: <span class="mono">"Measure the speed you can actually use. 12 tasks, every answer graded, ~15s. No number leaves this machine."</span> Equation chip shown once as teaching: <span class="mono">raw speed × pass rate = checked speed</span>.</td></tr>
+    <tr><td>idle · has history</td><td>Champion card visible above run buttons (§06). Buttons: <span class="mono">Run quick · ~15s</span> / <span class="mono">Run full · 2–4 min</span>.</td></tr>
+    <tr><td>running</td><td>As specced above. Settings locked with caption <span class="mono">"run in progress — settings locked"</span>. Abort button always present.</td></tr>
+    <tr><td>server unreachable (pre-run)</td><td><span class="mono">"Can't reach the server at {url}. Nothing was measured, nothing was recorded. Start your inference server, then run again."</span> Red is allowed here — this is a product error, not data.</td></tr>
+    <tr><td>mid-run disconnect</td><td><span class="mono">"Run aborted at task {k}/{n} — server stopped responding. Partial results are not recorded. Your history is unchanged."</span> No partial pollution of stats, ever (L7).</td></tr>
+    <tr><td>task failure</td><td>Not an error — data. Segment goes amber, tally continues, grader hint captured for the ticks row. Timeouts count as fails with hint <span class="mono">"timeout {t}s"</span>.</td></tr>
+    <tr><td>success</td><td>The Verdict sequence (§04): verdict line → count-up → lanes → waterfall → ticks → champion ceremony if applicable.</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="garage">
+  <div class="secno">06 · The Garage — the tweaker's reward loop</div>
+  <h2>Champion vs challenger. Every run pays out.</h2>
+  <p>The past-runs table becomes the Garage: a tuning journal where the best run per suite is the
+  <strong>Champion</strong> — pinned, with its recipe displayed as the thing to beat — and every other run is a
+  challenger with a user note ("quant Q4→IQ4_XS", "ctx 8k→32k", "draft off"). The ★ badge dies; its trigger
+  graduates into a ceremony with three states. Toggle them:</p>
+
+  <div class="proto">
+    <div class="proto-tag"><span><b>INTERACTIVE</b> · ceremony states</span><span>the garage</span></div>
+    <div class="proto-body">
+      <div class="cer-btns" role="group" aria-label="ceremony state">
+        <button data-s="first" class="on">first run</button>
+        <button data-s="best">new champion</button>
+        <button data-s="lose">no dethrone</button>
+      </div>
+      <div class="cer-card" id="cer-card" aria-live="polite"></div>
+      <div class="buildnote"><b>BUILD NOTE</b> — ceremony card renders once per run, immediately after the Verdict.
+        Champion state persists as a card above the run panel. Notes field placeholder:
+        <span class="mono">"what changed? e.g. quant Q4_K_M → IQ4_XS"</span>. Spec-decode acceptance (98.5–100%)
+        lives here as a recipe diagnostic line — demoted from the hero cluster, where it was noise for the
+        non-technical and a brag about the wrong thing.</div>
+    </div>
+  </div>
+
+  <h3>The Verdict Receipt — the brag, weaponised</h3>
+  <p>The user wants to post something. Give them something that wins. One button —
+  <strong>Copy verdict</strong> — puts this on the clipboard:</p>
+  <div class="receipt">My local AI: <b>62 checked tok/s</b> — 11 of 12 tasks graded correct, wall-clock, cold start.<br>
+  Raw peak: 198 tok/s, unchecked — same as the screenshots.<br>
+  effbench · measured on my machine · nothing left it.</div>
+  <p class="cap">provenance: every figure in the receipt is measured · the receipt never carries reference, community or claim data (L3/L4) · terminal gets the same text</p>
+  <p>The receipt converts the old brag line's job into the user's own voice, in the product's vocabulary. Every
+  shared receipt is an ad for the frame: <em>checked vs unchecked.</em></p>
+</section>
+
+<!-- ============================================================ -->
+<section id="translator">
+  <div class="secno">07 · The Claims Translator</div>
+  <h2>"I've seen people talking about 200 t/s." — Check it.</h2>
+  <p>This is the direct answer to the user's paragraph. Not a number to fight the screenshot — a tool that shows
+  what the screenshot is missing. Enter any claim; the translator does arithmetic, truthfully labelled as arithmetic.
+  Try it:</p>
+
+  <div class="proto">
+    <div class="proto-tag"><span><b>LIVE PROTOTYPE</b> · fully functional</span><span>claims translator</span></div>
+    <div class="proto-body">
+      <div class="tr-row">
+        <label for="tr-in">they claim</label>
+        <input id="tr-in" type="number" value="200" min="1" max="100000" aria-describedby="tr-cap">
+        <label>tok/s, unchecked</label>
+      </div>
+      <div class="tr-out" id="tr-out" aria-live="polite"></div>
+      <div class="tr-kick">A speed claim with no pass rate isn't a number. It's an ad.</div>
+      <div class="cap src" id="tr-cap">illustration · arithmetic on an unverified claim · their pass rate was not measured · your pass rate (92%) measured this run</div>
+      <div class="buildnote"><b>BUILD NOTE</b> — input clamped 1–100000; invalid → <span class="mono">"enter their
+        claim, not your doubts."</span>; &gt;2000 appends <span class="mono">"ambitious."</span> to the caption.
+        Claim numbers never appear on any chart (L4) — this module is the only place external claims may exist, and
+        they exist here as arithmetic, not data.</div>
+    </div>
+  </div>
+  <p>The translator converts insecurity into scepticism — the exact emotional jujitsu the brief demands. It also
+  teaches the frame better than any paragraph could: the user discovers, with their own hands, that the missing
+  pass rate is where the truthfuly lives.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="report">
+  <div class="secno">08 · The report — new order</div>
+  <h2>Same file, same constraints, new emotional arc</h2>
+  <p>Self-contained HTML, inline SVG, prints clean — all kept. The order changes to mirror the Verdict, and a
+  provenance ledger closes the document. Print stylesheet swaps tokens (specified in §10); captions print.</p>
+  <table>
+    <tr><th>#</th><th>block</th><th>change</th></tr>
+    <tr><td class="mono">1</td><td>Verdict sentence</td><td><span class="pill keep">NEW</span> — the report opens with the sentence, not the numeral.</td></tr>
+    <tr><td class="mono">2</td><td>Hero: 56px effective + equation + provenance caption</td><td><span class="pill keep">RESTYLE</span> — add "· CHECKED" adjective and source line.</td></tr>
+    <tr><td class="mono">3</td><td>Confrontation lanes (your 198 unchecked vs your 62 checked)</td><td><span class="pill keep">NEW</span> — the argument, in the shareable artifact.</td></tr>
+    <tr><td class="mono">4</td><td>Waterfall with cause captions</td><td><span class="pill absorb">ABSORB</span> — replaces supporting micro-bars; fit line's copy moves here.</td></tr>
+    <tr><td class="mono">5</td><td>Ticks row + named failure with grader hint</td><td><span class="pill keep">NEW PRIMARY</span> — arc demoted to secondary, may sit beside purpose ladder.</td></tr>
+    <tr><td class="mono">6</td><td>Purpose ladder + per-purpose effective chips</td><td><span class="pill keep">EXTEND</span> — each rung gains <span class="mono">code 71 eff · extract 44 eff</span> style checked figures. Zero-pass sliver and untested list stay — they're truthful.</td></tr>
+    <tr><td class="mono">7</td><td>Your Normal (n≥3, this rig)</td><td><span class="pill keep">NEW</span> — replaces band chart in the body. Locked state prints the unlock copy.</td></tr>
+    <tr><td class="mono">8</td><td>Compare (if prior run selected)</td><td><span class="pill keep">RESTYLE</span> — dumbbells stay; reframed champion-vs-challenger with recipe notes.</td></tr>
+    <tr><td class="mono">9</td><td>Reference soak appendix</td><td><span class="pill demote">DEMOTE</span> — the n=1 band, verbatim label: <span class="mono">"reference soak · dev rig (RTX 5090 · Qwen3-27B IQ4_XS) · 120–200 gen-only · one rig, not a crowd · included because it's real, labelled because it's thin."</span></td></tr>
+    <tr><td class="mono">10</td><td>Provenance ledger</td><td><span class="pill keep">NEW</span> — closing table: every figure in the document → its value → its trust tier (§09). The report signs its own work.</td></tr>
+  </table>
+  <p class="cap">report footer, exact: <span class="mono">"generated on this machine · no data left it · effbench v{ver} · suite {quick|full}-v1 (prompts frozen)"</span></p>
+</section>
+
+<!-- ============================================================ -->
+<section id="trust">
+  <div class="secno">09 · The trust ladder — provenance as a system</div>
+  <h2>"How do we know what typical is?" Truthfully: we can't yet. Here's what we can know.</h2>
+  <p>Every number in the product carries one of these labels — visibly, always (L3). The ladder is also printed in
+  settings and in the report, so the system explains itself.</p>
+  <table>
+    <tr><th>tier</th><th>label (exact)</th><th>what it is</th><th>rules</th></tr>
+    <tr><td class="mono">T1</td><td class="mono">measured this run</td><td>Live data from the current benchmark.</td><td>The only tier allowed in the hero.</td></tr>
+    <tr><td class="mono">T2</td><td class="mono">measured · your history · n={k}</td><td>Past runs on this machine, this setup.</td><td>Basis of Your Normal (n≥3) and earned ETA (n≥2). Never blended with other tiers.</td></tr>
+    <tr><td class="mono">T3</td><td class="mono">reference soak · one rig · n=1</td><td>The dev rig's soak (120–200 gen-only).</td><td>Appendix only. Never charted against T1/T2 on one axis. Never called "typical."</td></tr>
+    <tr><td class="mono">T4</td><td class="mono">community-reported · unverified</td><td>Future opt-in exports from other users.</td><td>Spec below. Scatter only; no bands until n≥30 per cell; no percentile claims until n≥100. Label is permanent — verification never gets claimed.</td></tr>
+    <tr><td class="mono">T5</td><td class="mono">unverified claim</td><td>Numbers the user types in (screenshots, forum posts).</td><td>Translator only. Never charted, never stored as data.</td></tr>
+    <tr><td class="mono">—</td><td class="mono">illustration · arithmetic, not data</td><td>Computed hypotheticals (translator outputs).</td><td>Not a trust tier — a computation label. Must be inseparable from the output.</td></tr>
+  </table>
+
+  <h3>Your Normal — the real answer to "is my setup good?"</h3>
+  <ul class="tight">
+    <li><strong>Locked (n&lt;3):</strong> <span class="mono">"Your normal unlocks after 3 runs on this setup. One run is a measurement; three is a pattern."</span></li>
+    <li><strong>Open (n≥3):</strong> p10–p90 of your wall, gen-only and pass rate, this rig, this model string: <span class="mono">"Your normal · 5 runs: wall 63–71 · gen-only 138–145 · pass 89–96% · this run: inside."</span></li>
+    <li><strong>Outside:</strong> <span class="mono">"This run is outside your normal (wall 54 vs 63–71). Something changed — check your recipe notes."</span> This is the fit line's soul, rebased onto data that's actually comparable.</li>
+  </ul>
+
+  <h3>Community tier — what to collect, when, and how to label it meanwhile</h3>
+  <p>Do not collect anything silently, and do not promise "typical." Ship the export schema in P2, opt-in per run,
+  off by default:</p>
+  <pre class="term">{
+  "effbench": "0.7.0",        <span class="m">// product version</span>
+  "suite":    "quick-v1",     <span class="m">// frozen suite id — comparability lives here</span>
+  "model":    "as reported by server, raw string",
+  "quant":    "parsed from model string, or null",
+  "gpu":      "user-typed, or null",
+  "eff": 62, "wall": 67, "gen_med": 141, "pass": 0.9167,
+  "ts": "2025-…"
+}<span class="a">// never: prompts, outputs, machine identifiers, IP-derived anything</span></pre>
+  <p class="cap">until n≥30 per (suite × gpu-class) cell, community data displays as individual dots labelled T4 — a crowd of
+  named points, not a fake smooth band. Meanwhile the label says what is true: <span class="mono">"community-reported ·
+  unverified · early days."</span> The truthful empty state <em>is</em> the design.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="spec">
+  <div class="secno">10 · Spec sheet</div>
+  <h2>Tokens, motion, states, phone, print, accessibility, terminal</h2>
+
+  <h3>Color (contrast verified against its surface)</h3>
+  <table>
+    <tr><th>token</th><th>hex</th><th>role</th></tr>
+    <tr><td class="mono">--void</td><td class="mono">#0A0C0D</td><td>app background</td></tr>
+    <tr><td class="mono">--panel / --panel2</td><td class="mono">#121517 / #171C1E</td><td>surfaces</td></tr>
+    <tr><td class="mono">--hair / --hair2</td><td class="mono">#23292C / #323A3D</td><td>rules, borders, dashed = unchecked</td></tr>
+    <tr><td class="mono">--ink / --dim / --faint</td><td class="mono">#E9EDED / #A9B3B5 / #828D8F</td><td>text ramp — faint is the caption floor (≥4.5:1 on panel)</td></tr>
+    <tr><td class="mono">--mint</td><td class="mono">#6FF2B6</td><td><strong>checked only.</strong> brand, pass, champion, focus</td></tr>
+    <tr><td class="mono">--amber</td><td class="mono">#F0B26E</td><td>failed tasks, fix targets, attention — never errors</td></tr>
+    <tr><td class="mono">--red</td><td class="mono">#F07575</td><td>product errors only (server down, abort)</td></tr>
+  </table>
+
+  <h3>Type &amp; layout</h3>
+  <table>
+    <tr><th>role</th><th>spec</th></tr>
+    <tr><td>stacks</td><td class="mono">mono: ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas · sans: system-ui stack · no web fonts, ever</td></tr>
+    <tr><td>hero numeral</td><td class="mono">64px/700 mono, tabular-nums · 44px ≤560px</td></tr>
+    <tr><td>verdict / section titles</td><td class="mono">13px mono caps, letter-spacing .14–.16em</td></tr>
+    <tr><td>body / caption</td><td class="mono">14–15px/1.55 · 11.5px mono/1.45</td></tr>
+    <tr><td>layout</td><td class="mono">content max 880px UI / 920px report · panel radius 8px · hairlines 1px · 4px spacing base · panel padding 20px (16px ≤560px)</td></tr>
+    <tr><td>numerals</td><td class="mono">font-variant-numeric: tabular-nums on every changing digit, everywhere</td></tr>
+  </table>
+
+  <h3>Motion (one scale) &amp; reduced-motion mapping</h3>
+  <table>
+    <tr><th>element</th><th>default</th><th>prefers-reduced-motion</th></tr>
+    <tr><td>micro (hover, chips)</td><td class="mono">120ms ease-out</td><td class="mono">none</td></tr>
+    <tr><td>panels, fades</td><td class="mono">240ms ease</td><td class="mono">opacity-only 120ms</td></tr>
+    <tr><td>hero count-up</td><td class="mono">900ms cubic-bezier(.2,.7,.2,1), fresh results only</td><td class="mono">instant</td></tr>
+    <tr><td>waterfall bars</td><td class="mono">width 900ms, once on entry</td><td class="mono">final widths</td></tr>
+    <tr><td>in-flight segment</td><td class="mono">steady 35% mint (optional 1.6s pulse)</td><td class="mono">static</td></tr>
+  </table>
+
+  <h3>Phone behaviour (≤560px; ≤360px noted)</h3>
+  <ul class="tight">
+    <li>Single column everywhere. Confrontation lanes stack, <strong>checked first</strong>.</li>
+    <li>Hero 44px (40px ≤360px); equation chip wraps; unit drops to 16px.</li>
+    <li>Waterfall: label column 110px; if still tight, labels move above bars — scale never breaks.</li>
+    <li>Ticks wrap 6×2 (14px cells ≤360px). Past-runs table becomes a card list. Run-stat row wraps to two lines.</li>
+    <li>Translator: input full-width, table becomes a 2-column grid. Report: lanes stack, ledger becomes definition list.</li>
+  </ul>
+
+  <h3>Accessibility (non-negotiable)</h3>
+  <ul class="tight">
+    <li>Focus: 1px mint outline, 2px offset, on every interactive element — <code class="k">:focus-visible</code> only.</li>
+    <li>No colour-only meaning: pass ticks carry ✓, fail carries ✕, unchecked bars are dashed <em>and</em> labelled.</li>
+    <li>Hero announces via <code class="k">aria-live="polite"</code> with the <em>final</em> string; the count-up is visual only.</li>
+    <li>Ticks row is one <code class="k">role="img"</code> with a text label ("11 of 12 tasks passed"), not 12 tab stops.</li>
+    <li>Contrast floor 4.5:1 for all text including captions; mint on void ≈ 13:1.</li>
+  </ul>
+
+  <h3>Terminal — first-class variants (exact)</h3>
+  <pre class="term">FAST — AND RIGHT.
+  62 checked tok/s   (67 wall x 92% pass)   [measured this run · quick · 12 tasks]
+
+  THE NUMBER YOU COULD POST
+  checked    62 tok/s   12 graded, 11 passed, wall-clock, cold
+  unchecked 198 tok/s   gen-only, best case, zero graded — how screenshots are made
+
+  <span class="m">[x][x][x][x][x][x][x]</span><span class="a">[!]</span><span class="m">[x][x][x][x]</span>  11/12   fail: structure/json_schema — prose, expected JSON
+
+  peak  198 |##################################| unchecked
+  gen   141 |#########################           | unchecked
+  wall   67 |###########                         | cold prompt processing
+  eff    62 |##########                          | x0.92 truthfuly discount</pre>
+</section>
+
+<!-- ============================================================ -->
+<section id="copy">
+  <div class="secno">11 · Copy deck — every new string, keyed</div>
+  <h2>For the engineer: nothing left to invent</h2>
+  <table>
+    <tr><th>key</th><th>string</th></tr>
+    <tr><td class="mono">hero.gloss</td><td class="mono">effective speed — correct answers per second</td></tr>
+    <tr><td class="mono">hero.src</td><td class="mono">measured this run · {suite} suite · {n} tasks · nothing left this machine</td></tr>
+    <tr><td class="mono">confront.title</td><td class="mono">The number you could post</td></tr>
+    <tr><td class="mono">confront.checked.tag</td><td class="mono">Checked · yours</td></tr>
+    <tr><td class="mono">confront.checked.cap</td><td class="mono">{n} tasks graded · {p} passed · wall-clock, cold start. The speed of answers you can use.</td></tr>
+    <tr><td class="mono">confront.unchecked.tag</td><td class="mono">Unchecked · also yours</td></tr>
+    <tr><td class="mono">confront.unchecked.cap</td><td class="mono">generation-only · best case · zero answers graded. This is how the screenshots are made.</td></tr>
+    <tr><td class="mono">confront.kicker</td><td class="mono">You own both numbers. Only one survives the follow-up question: "Yeah — but were the answers right?"</td></tr>
+    <tr><td class="mono">confront.src</td><td class="mono">both figures measured this run · unchecked peak is not comparable to checked speed — that is the point</td></tr>
+    <tr><td class="mono">wf.title / wf.legend</td><td class="mono">Where the speed goes · hollow = unchecked · solid = checked</td></tr>
+    <tr><td class="mono">wf.d1 / d2 / d3</td><td class="mono">−{x} · best case vs typical / −{x} · cold prompt processing — tunable: context length, cache warmth / −{x} · the truthfuly discount × {pass}</td></tr>
+    <tr><td class="mono">ticks.title / ticks.fail</td><td class="mono">The pass, made visible · {p} of {n} passed. The failure is named, not hidden: ✕ {task} — {grader hint}. That's your next fix target.</td></tr>
+    <tr><td class="mono">run.idle.pitch</td><td class="mono">Measure the speed you can actually use. {n} tasks, every answer graded, ~{t}. No number leaves this machine.</td></tr>
+    <tr><td class="mono">run.status</td><td class="mono">task {k}/{n} · {purpose} · {task} · elapsed {mm:ss}{ · usually {mm:ss} if n≥2}</td></tr>
+    <tr><td class="mono">run.tally</td><td class="mono">passed {p}/{k} so far</td></tr>
+    <tr><td class="mono">run.err.offline / run.err.midrun</td><td class="mono">Can't reach the server at {url}. Nothing was measured, nothing was recorded. / Run aborted at task {k}/{n} — server stopped responding. Partial results are not recorded. Your history is unchanged.</td></tr>
+    <tr><td class="mono">garage.champion</td><td class="mono">CHAMPION · {eff} checked tok/s · recipe "{note}" · run {id} · the number every change has to beat</td></tr>
+    <tr><td class="mono">garage.note.ph</td><td class="mono">what changed? e.g. quant Q4_K_M → IQ4_XS</td></tr>
+    <tr><td class="mono">normal.locked / normal.out</td><td class="mono">Your normal unlocks after 3 runs on this setup. One run is a measurement; three is a pattern. / This run is outside your normal ({metric} {v} vs {lo}–{hi}). Something changed — check your recipe notes.</td></tr>
+    <tr><td class="mono">translator.kick / translator.src</td><td class="mono">A speed claim with no pass rate isn't a number. It's an ad. / illustration · arithmetic on an unverified claim · their pass rate was not measured</td></tr>
+    <tr><td class="mono">report.footer</td><td class="mono">generated on this machine · no data left it · effbench v{ver} · suite {id} (prompts frozen)</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="build">
+  <div class="secno">12 · Build order</div>
+  <h2>What ships first, and why</h2>
+  <table>
+    <tr><th>phase</th><th>contents</th><th>why this order</th><th>size</th></tr>
+    <tr>
+      <td class="mono">P0 — The Reframe</td>
+      <td>Verdict line + hero adjective/gloss · confrontation lanes · waterfall (absorbs micro-bars + fit line) · ticks row (arc demoted) · provenance captions retrofitted to every existing figure · kills: forever-sweep, brag line, count-up-always. ★ badge trigger restyled as a "NEW CHAMPION" tag pending P1.</td>
+      <td>Uses <strong>only data v0.6.1 already collects</strong>. Directly answers every line of the user feedback. If we ship nothing else, the feeling is fixed.</td>
+      <td class="mono">M</td>
+    </tr>
+    <tr>
+      <td class="mono">P1 — The Loop &amp; the Argument</td>
+      <td>Run store upgrade (notes, champion flag per suite) · the Garage (ceremony states, challengers) · Verdict Receipt · <strong>Claims Translator</strong> (UI + static report version) · report reorder + provenance ledger + per-purpose effective chips · live pass tally · terminal variants.</td>
+      <td>Builds retention (every run pays out) and hands users the argument. Translator is the most feedback-adjacent feature and cheap — it goes here, not later, deliberately.</td>
+      <td class="mono">L</td>
+    </tr>
+    <tr>
+      <td class="mono">P2 — The Context</td>
+      <td>Your Normal (n≥3) replacing the cross-rig band in UI · band demoted to report appendix · earned ETA · community export schema (opt-in, off by default, T4-labelled) · compare restyled champion-vs-challenger.</td>
+      <td>Needs the P1 run store to have accumulated meaning. Context that arrives before history exists would have to be invented — and we don't invent.</td>
+      <td class="mono">M</td>
+    </tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="cuts">
+  <div class="secno">13 · The cut list</div>
+  <h2>Everything in v0.6.1, judged</h2>
+  <table>
+    <tr><th>component</th><th>verdict</th><th>the argument</th></tr>
+    <tr><td>Forever-sweeping in-flight segment</td><td><span class="pill kill">KILL</span></td><td>A spinner in a suit. It claims progress it doesn't have; an instrument that guesses teaches users to distrust instruments. Replaced by elapsed + earned ETA + live tally.</td></tr>
+    <tr><td>★ new-best badge</td><td><span class="pill kill">KILL</span></td><td>Fires on &lt;10% of runs and says one word when it does. Graduated into the champion ceremony — same trigger, an actual story.</td></tr>
+    <tr><td>Tone-matched brag line</td><td><span class="pill kill">KILL</span></td><td>Cheer at 55% pass reads as sarcasm; cheer at 95% is a quip where a receipt should be. Replaced by the four-state verdict line (facts) and the Verdict Receipt (brag).</td></tr>
+    <tr><td>Cross-rig "typical" band (UI + report top)</td><td><span class="pill demote">DEMOTE</span></td><td>n=1 from a different rig is a lie with a footnote; the user misread it despite the label. Demoted to a verbatim-labelled appendix. Replaced by Your Normal.</td></tr>
+    <tr><td>Equation chip as the accuracy argument</td><td><span class="pill demote">DEMOTE</span></td><td>Good arithmetic, wrong job. It explains; it was asked to persuade. Stays as a caption under the hero. The confrontation lanes do the persuading.</td></tr>
+    <tr><td>240° pass-rate arc (primary)</td><td><span class="pill demote">DEMOTE</span></td><td>Decoration. Carries no task identity, no action. Ticks replace it; the arc may linger in the report as a secondary flourish or die in the next pass — I won't mourn it.</td></tr>
+    <tr><td>Accept-rate strip (spec-decode)</td><td><span class="pill demote">DEMOTE</span></td><td>Recipe diagnostic for tweakers, noise for everyone else — and a brag about the wrong thing (speed of accepting, not correctness of answers). Moves to the Garage.</td></tr>
+    <tr><td>Fit line component</td><td><span class="pill absorb">ABSORB</span></td><td>Right instinct — reframing cold runs — wrong component. Its copy moves into the waterfall's cause captions and Your Normal's outside-state.</td></tr>
+    <tr><td>Supporting micro-bars (wall/gen/peak)</td><td><span class="pill absorb">ABSORB</span></td><td>Same data as the waterfall, minus the causes. Absorbed.</td></tr>
+    <tr><td>900ms count-up on every render</td><td><span class="pill demote">RESTRICT</span></td><td>Drama spent once is drama; spent always, it's latency. Fresh results only, instant on revisit, off under reduced-motion.</td></tr>
+    <tr><td>Segmented rail · task-row fade-ins</td><td><span class="pill keep">KEEP</span></td><td>Good bones. Rail gains truthful states; rows stay exactly as satisfying.</td></tr>
+    <tr><td>Purpose ladder (n counts, zero-pass sliver, untested listed)</td><td><span class="pill keep">KEEP</span></td><td>Already truthful design. Extended with per-purpose checked figures.</td></tr>
+    <tr><td>Compare dumbbells</td><td><span class="pill keep">KEEP</span></td><td>Restyled champion-vs-challenger; same-suite guard added: "Quick vs Full isn't a fair fight."</td></tr>
+    <tr><td>Void-black instrument aesthetic</td><td><span class="pill keep">KEEP</span></td><td>Kept by choice, not inheritance. Instruments don't flatter — that <em>is</em> the brand. Mint is now reserved for checked, which makes the accent mean something.</td></tr>
+    <tr><td>Terminal menu · single-file constraints · frozen suites</td><td><span class="pill keep">KEEP</span></td><td>Untouched. The terminal gets every new string as a first-class variant (§10).</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ -->
+<section id="beyond">
+  <div class="secno">14 · If even §5 were negotiable</div>
+  <h2>What I'd do next, with the gloves off</h2>
+  <ul class="tight">
+    <li><strong>Signed result files — the end of unverifiable screenshots.</strong> Hash prompts + outputs + grades +
+    suite id into every export. The Verdict Receipt becomes a <em>proof</em>, and a new trust tier appears above
+    community: <span class="mono">verified peer</span>. The 200 tok/s screenshot dies of embarrassment in public,
+    at scale, and effbench is the weapon that kills it.</li>
+    <li><strong>Seasons for the frozen prompts.</strong> "Frozen forever" is right within a season and wrong across
+    years — models will overfit the 48. Annual suite seasons: frozen within, never translated across. Comparability
+    you can defend beats comparability you pretend.</li>
+    <li><strong>Adaptive probes on a frozen core.</strong> Core-48 stays untouchable for comparability; an adaptive
+    probe set spends extra measurement budget where the setup is doubtful (you fail structure → more structure).
+    Information per minute doubles; the headline number never moves.</li>
+    <li><strong>Warm/cold as first-class citizens.</strong> Cold wall vs warm wall is currently a footnote in a cause
+    caption. Measure cache behaviour explicitly and report both truths — the tweaker's context-length experiments
+    deserve their own axis.</li>
+    <li><strong>Checked tok/s per watt.</strong> The metric a gaming rig actually feels in July. Same truthfuly
+    equation, new denominator. Nobody in local AI owns this number yet; it's there for the taking.</li>
+    <li><strong>A human-unit hero option.</strong> For the truly non-technical: <span class="mono">"answers a question
+    like these every 0.9 seconds — correctly, 11 times out of 12."</span> Effective tok/s stays the hero by default;
+    this becomes the one-toggle translation for the group chat.</li>
+  </ul>
+  <p class="ink" style="margin-top:22px">That's the mandate. The number was never small — it was just the only one in
+  the room that had been checked. Build the reframe first. Everything else follows from the moment a user looks at
+  their own 198, then at their 62, and chooses the smaller number with a smile.</p>
+</section>
+
+</main>
+
+<footer class="foot"><div class="wrap">
+  <b>provenance of this document</b> · product figures: reference rig v0.6.1, per §3 of the brief (real) ·
+  failed-task names in prototypes: illustrative, labelled in place · community schema: proposal, not yet collecting ·
+  this file follows its own laws: one HTML file, zero external requests, every figure captioned, reduced-motion respected.
+  <br><b>effbench design mandate v1.0</b> · Kimi · final — build it.
+</div></footer>
+
+<script>
+(function(){
+  "use strict";
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- hero count-up: 900ms, once per trigger, instant if reduced ---- */
+  var numEl = document.getElementById("pv-num");
+  function countUp(target){
+    if(reduced){ numEl.textContent = target; return; }
+    var t0 = null, dur = 900;
+    function step(ts){
+      if(!t0) t0 = ts;
+      var p = Math.min((ts - t0)/dur, 1);
+      var e = 1 - Math.pow(1-p, 3); /* ease-out cubic */
+      numEl.textContent = Math.round(target * e);
+      if(p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+  var fired = false;
+  function fireHero(){ if(fired) return; fired = true; countUp(62); }
+  if("IntersectionObserver" in window){
+    var io = new IntersectionObserver(function(en){
+      en.forEach(function(e){ if(e.isIntersecting){ fireHero(); io.disconnect(); } });
+    }, {threshold:.4});
+    io.observe(numEl);
+  } else { fireHero(); }
+  document.getElementById("pv-replay").addEventListener("click", function(){ countUp(62); });
+
+  /* ---- waterfall bars: animate once on entry ---- */
+  var bars = Array.prototype.slice.call(document.querySelectorAll("#pv-wf .wf-bar"));
+  function fillBars(){ bars.forEach(function(b){ b.style.width = b.getAttribute("data-w") + "%"; }); }
+  if(reduced){ fillBars(); }
+  else if("IntersectionObserver" in window){
+    var io2 = new IntersectionObserver(function(en){
+      en.forEach(function(e){ if(e.isIntersecting){ fillBars(); io2.disconnect(); } });
+    }, {threshold:.3});
+    io2.observe(document.getElementById("pv-wf"));
+  } else { fillBars(); }
+
+  /* ---- garage ceremony states ---- */
+  var CEREMONY = {
+    first: { cls:"dim",   tag:"BASELINE SET",
+      big:'62 checked tok/s',
+      body:'Run 1 · quick suite. Every run from here answers one question: <strong>did that change help?</strong> Add a note to each run — future-you will thank present-you.' },
+    best:  { cls:"mint",  tag:"★ NEW CHAMPION",
+      big:'62 checked tok/s · +9',
+      body:'“draft on” paid for itself. Previous champion (54, “draft off”) retired to history. The recipe to beat is now: <strong>IQ4_XS + draft</strong>.' },
+    lose:  { cls:"amber", tag:"NO DETHRONE",
+      big:'58 vs 62 · −4',
+      body:'Logged under “ctx 32k”. A losing run is not a wasted run — <strong>now you know what 32k costs.</strong> Champion unchanged. Change one thing, run again.' }
+  };
+  var card = document.getElementById("cer-card");
+  function renderCer(key){
+    var c = CEREMONY[key];
+    card.innerHTML =
+      '<div class="cer-tag ' + c.cls + '">' + c.tag + '</div>' +
+      '<div class="cer-big num">' + c.big + '</div>' +
+      '<div class="cer-body">' + c.body + '</div>';
+  }
+  var btns = document.querySelectorAll(".cer-btns button");
+  Array.prototype.forEach.call(btns, function(b){
+    b.addEventListener("click", function(){
+      Array.prototype.forEach.call(btns, function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      renderCer(b.getAttribute("data-s"));
+    });
+  });
+  renderCer("first");
+
+  /* ---- claims translator ---- */
+  var PASS = 0.92; /* measured this run, reference rig */
+  var inp = document.getElementById("tr-in"), out = document.getElementById("tr-out");
+  function row(label, val){
+    return '<tr><td>' + label + '</td><td class="mono" style="color:var(--ink)">' + val + ' checked tok/s</td></tr>';
+  }
+  function translate(){
+    var raw = inp.value.trim(), v = Number(raw);
+    if(raw === "" ){ out.innerHTML = '<p class="cap">enter a claim to check it.</p>'; return; }
+    if(!isFinite(v) || v <= 0){ out.innerHTML = '<p class="cap">enter their claim, not your doubts.</p>'; return; }
+    v = Math.min(Math.round(v), 100000);
+    var atYours = Math.round(v * PASS);
+    var extra = v > 2000 ? ' · ambitious.' : '';
+    out.innerHTML =
+      '<div class="tr-line">' + v + ' unchecked tok/s, graded at <em>your</em> pass rate (92%), would be worth <b>' +
+      atYours + ' checked</b> — if it were measured like yours: wall-clock, cold, every answer graded. It almost certainly isn\'t.</div>' +
+      '<table style="margin-top:4px"><tr><th>what that claim is worth at each pass rate</th><th></th></tr>' +
+      row('passes everything (100%)', v) +
+      row('passes 80%', Math.round(v * .8)) +
+      row('passes 60%', Math.round(v * .6)) +
+      row('passes 40%', Math.round(v * .4)) +
+      '</table>' +
+      (extra ? '<div class="cap">' + extra.slice(3) + '</div>' : '');
+  }
+  inp.addEventListener("input", translate);
+  translate();
+})();
+</script>
+</body>
+</html>
+```
+
+**The short version of the argument, for the record:** the product was explaining 62 when it should have been indicting 198. The user's own rig produces the screenshot-number — measured, this run — so the redesign puts it on screen, dashed and labelled *unchecked*, beneath the number that survived grading. The n=1 "typical" band gets demoted to an truthful appendix and replaced by Your Normal; the ★ badge graduates into a champion ceremony so losing runs pay out as knowledge; the Claims Translator and the Verdict Receipt hand users the argument to carry elsewhere. P0 ships the reframe using only data v0.6.1 already has. The cut list and the beyond-§5 roadmap close the file.

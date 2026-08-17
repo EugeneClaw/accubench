@@ -102,3 +102,58 @@ DIFFICULTY_DESCRIPTIONS = {
     "medium": "Needs attention; common weak spot for small models.",
     "hard":   "Pushes the model. Where strengths and weaknesses show.",
 }
+
+# What a fail means + what to try, keyed by (purpose, difficulty).
+# Tone: honest, non-alarming, actionable. A fail is data, not a disaster.
+FAIL_HINTS = {
+    ("reasoning", "hard"): (
+        "Hard multi-step reasoning — the common weak spot at this model size. "
+        "Try: --think (let it reason), a higher quant, or a bigger model. "
+        "Recipe tweaks (spec decode, context) rarely fix a reasoning fail."
+    ),
+    ("reasoning", "medium"): (
+        "Mid-tier reasoning slip. Try --think first; if it persists, this is "
+        "approaching the model's ceiling."
+    ),
+    ("reasoning", "easy"): (
+        "Easy reasoning failed — unusual. Check the answer: if it's correct "
+        "but differently phrased, it's a formatting miss, not a reasoning one."
+    ),
+    ("structure", "hard"): (
+        "Strict formatting under load — the hardest thing to ask of a model. "
+        "Bigger/higher-quant models do better; recipes rarely move this."
+    ),
+    ("structure", "medium"): (
+        "Formatting slip. Often the model computed the right answer but "
+        "wrapped it wrong. A higher quant or a stronger model helps; so does "
+        "a stricter system prompt in your app."
+    ),
+    ("structure", "easy"): (
+        "Simple formatting failed — surprising. Read the model's answer; if "
+        "the content is right, it's presentation, not capability."
+    ),
+    ("code", "hard"): (
+        "Code failed on a harder task. Check whether the code ran at all vs "
+        "produced wrong output — the first is formatting, the second is real."
+    ),
+    ("code", "medium"): (
+        "Code slip. Commonly an off-by-one or edge case. Higher quant or "
+        "bigger model helps; spec-decode settings rarely change code accuracy."
+    ),
+    ("code", "easy"): (
+        "Easy code task failed — unusual. Look at the raw answer: often the "
+        "model added prose the grader (rightly) rejected."
+    ),
+}
+
+# Fallback when (purpose, difficulty) isn't in FAIL_HINTS.
+FAIL_HINT_DEFAULT = (
+    "Check the model's answer against what the grader wanted. If the content "
+    "is right but the shape is wrong, it's a formatting miss; otherwise it's "
+    "a capability limit — try --think, a higher quant, or a bigger model."
+)
+
+
+def fail_hint(purpose, difficulty):
+    """Plain-English: what this fail means and what to try."""
+    return FAIL_HINTS.get((purpose, difficulty), FAIL_HINT_DEFAULT)

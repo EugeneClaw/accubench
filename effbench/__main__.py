@@ -28,7 +28,7 @@ from . import wizard
 from .csv_export import export_per_task, export_summary, export_compare
 from .share import render_markdown
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
-                          lookup, classify_fit)
+                           lookup, classify_fit, fit_for)
 
 
 def cmd_run(args):
@@ -107,11 +107,25 @@ def run_task(client, task, args, server, run_id, run_idx):
         "content": content,
         "reasoning": reasoning,
     }
-    # speculative-decode fields if present
+    # speculative-decode + server timings. llama.cpp reports these under
+    # `timings` (perf), other servers under usage.draft_tokens/speculative.
+    perf = data.get("_perf") or {}
     sd = usage.get("draft_tokens") or usage.get("speculative") or {}
+    if isinstance(sd, dict) and sd.get("accept_pct") is None:
+        dn = perf.get("draft_n")
+        da = perf.get("draft_n_accepted")
+        if dn and da is not None:
+            sd = dict(sd)
+            sd["draft_n"] = dn
+            sd["accept_pct"] = round(100.0 * da / dn, 1)
     if isinstance(sd, dict):
         out["draft_n"] = sd.get("draft_n") or sd.get("draft")
         out["accept_pct"] = sd.get("accept_pct")
+    # generation-only speed as reported by the server (excludes prompt
+    # processing). Wall-clock tok_s stays THE metric; this is context.
+    gen = perf.get("predicted_per_second")
+    if gen:
+        out["gen_tps"] = round(float(gen), 1)
     passed, detail = grade(task["grader"], content, reasoning)
     out["pass"] = bool(passed)
     out["grader_detail"] = detail
@@ -165,26 +179,18 @@ def cmd_report(args):
     if len(tags) == 1:
         tag = tags[0]
         bag = [r for r in recs if r["tag"] == tag]
-        model_path = (props or {}).get("model_path", "")
-        # Use observed t/s for hardware classification (since /props is often opaque)
-        observed_tps = aggregate(bag).get("raw_tps") or 0
-        hwc = detect_hw_class(props or {}, observed_raw_tps=observed_tps if observed_tps else None)
-        band = lookup(hwc, detect_model_arch(model_path), detect_quant(model_path)) if props else None
-        klass = classify_fit(observed_tps, band)
+        # Suite-aware fit: quick-suite bands get the ×0.89 scale
+        hwc, band, klass, _suite = fit_for(bag, props or {})
         html_doc = render_report([(tag, bag, band, klass, hwc)], props=props)
     else:
         # multi: compare the first two
         a, b = tags[0], tags[1]
         recs_a = [r for r in recs if r["tag"] == a]
         recs_b = [r for r in recs if r["tag"] == b]
-        model_path = (props or {}).get("model_path", "")
-        # Use the average of both runs as the observed signal
         obs_tps = (aggregate(recs_a).get("raw_tps", 0) + aggregate(recs_b).get("raw_tps", 0)) / 2
         hwc = detect_hw_class(props or {}, observed_raw_tps=obs_tps if obs_tps else None)
-        band_a = lookup(hwc, detect_model_arch(model_path), detect_quant(model_path)) if props else None
-        band_b = band_a
-        klass_a = classify_fit(aggregate(recs_a).get("raw_tps", 0), band_a)
-        klass_b = classify_fit(aggregate(recs_b).get("raw_tps", 0), band_b)
+        _, band_a, klass_a, _ = fit_for(recs_a, props or {})
+        _, band_b, klass_b, _ = fit_for(recs_b, props or {})
         html_doc = render_report([(a, recs_a, band_a, klass_a, hwc),
                                   (b, recs_b, band_b, klass_b, hwc)],
                                  props=props, mode="compare")
@@ -207,15 +213,10 @@ def cmd_compare(args):
             props = ServerClient(args.url).props()
         except Exception:
             props = None
-    model_path = (props or {}).get("model_path", "")
     obs_tps = (aggregate(recs_a).get("raw_tps", 0) + aggregate(recs_b).get("raw_tps", 0)) / 2
     hwc = detect_hw_class(props or {}, observed_raw_tps=obs_tps if obs_tps else None)
-    arch = detect_model_arch(model_path)
-    q = detect_quant(model_path)
-    band_a = lookup(hwc, arch, q) if props else None
-    band_b = band_a
-    klass_a = classify_fit(aggregate(recs_a).get("raw_tps", 0), band_a)
-    klass_b = classify_fit(aggregate(recs_b).get("raw_tps", 0), band_b)
+    _, band_a, klass_a, _ = fit_for(recs_a, props or {})
+    _, band_b, klass_b, _ = fit_for(recs_b, props or {})
     if args.out and args.out.endswith(".html"):
         html_doc = render_report([(args.tag, recs_a, band_a, klass_a, hwc),
                                   (args.against, recs_b, band_b, klass_b, hwc)],

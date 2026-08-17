@@ -7,8 +7,21 @@ The point is not precision — it's giving the user a sense of 'typical'.
 import json
 import os
 
+from .ledger import aggregate, suite_of
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(HERE, "expectations.json")
+
+# Paired soak cycles 2026-08-17 (same rig, same model, quick vs full suite):
+# quick median / full median = 0.899 and 0.874. Quick tasks are short, so
+# wall-clock t/s carries proportionally more prompt-processing overhead.
+# Verdict bands for the quick suite are scaled by this factor.
+# NOTE: soak cycles repeat identical prompts back-to-back, so their wall
+# t/s includes a WARM prompt KV cache. A single cold run reads lower,
+# especially on short tasks. Gen-only t/s (timings.predicted_per_second)
+# is cache-invariant: cold-run gen ≈ warm-soak wall on the same rig
+# (165.7 vs 167.7 median, 2026-08-17 verification).
+QUICK_SCALE = 0.89
 
 
 def _load():
@@ -126,22 +139,49 @@ def detect_quant(model_path):
 
 
 def lookup(hw_class, model_arch, quant):
-    """Return the (lo, hi) typical raw t/s band, or None if no data."""
+    """Return the (lo, hi, source) typical raw t/s band, or None if no data."""
     data = _load()
-    for e in data["entries"]:
-        if (e["hw_class"] == hw_class and
-            e["model_arch"] == model_arch and
-            e["quant"] == quant):
-            return (e["tok_s_lo"], e["tok_s_hi"], e.get("ref_url", ""))
-    # try relaxing quant
-    for e in data["entries"]:
-        if e["hw_class"] == hw_class and e["model_arch"] == model_arch:
-            return (e["tok_s_lo"], e["tok_s_hi"], e.get("ref_url", ""))
-    # relax model too
-    for e in data["entries"]:
-        if e["hw_class"] == hw_class:
-            return (e["tok_s_lo"], e["tok_s_hi"], e.get("ref_url", ""))
+    for relax in ("exact", "quant", "hw"):
+        for e in data["entries"]:
+            if e["hw_class"] != hw_class:
+                if relax != "hw":
+                    continue
+            elif relax == "exact" and (e["model_arch"] != model_arch or
+                                       e["quant"] != quant):
+                continue
+            elif relax == "quant" and e["model_arch"] != model_arch:
+                continue
+            src = e.get("ref_url", "")
+            src = ("measured: " + src) if src.startswith("own soak") else src
+            return (e["tok_s_lo"], e["tok_s_hi"], src)
     return None
+
+
+def fit_for(recs, props):
+    """One-stop: hardware class, suite-scaled band, fit class for a tag's records.
+
+    Returns (hw_class, band, klass, suite) — band already scaled if the records
+    are from the quick suite, so callers can compare observed median to band
+    directly.
+    """
+    agg = aggregate(recs)
+    observed = agg.get("raw_tps") or 0
+    suite = suite_of(recs)
+    # Class inference prefers gen-only t/s when the server reports it: it is
+    # cache-invariant, so a cold single run doesn't misclassify the hardware
+    # (a 5090 cold quick run reads ~66 wall — mid-class — but ~141 gen, which
+    # is correctly high-class and matches warm wall on the same rig).
+    infer_from = agg.get("gen_tps_median") or observed
+    hwc = detect_hw_class(props or {}, observed_raw_tps=infer_from if infer_from else None)
+    band = None
+    if props:
+        band = lookup(hwc, detect_model_arch(props.get("model_path", "")),
+                      detect_quant(props.get("model_path", "")))
+        if band and suite == "quick":
+            lo, hi, src = band
+            band = (round(lo * QUICK_SCALE), round(hi * QUICK_SCALE), src)
+    klass = classify_fit(observed, band)
+    return hwc, band, klass, suite
 
 
 def classify_fit(observed_tps, band):

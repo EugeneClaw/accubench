@@ -13,7 +13,7 @@ from .client import ServerClient
 from .ledger import append_record, aggregate, load_ledger
 from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
-                           lookup, classify_fit)
+                           lookup, classify_fit, fit_for)
 
 
 SUITES_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "suites")
@@ -102,14 +102,9 @@ def _run_quietly(url, suite_path, tag, ledger, runs):
 
 def _make_report(tag, ledger, props, out_path):
     recs = [r for r in load_ledger(ledger) if r.get("tag") == tag]
-    agg = aggregate(recs)
-    # Hardware detection: try /props first, fall back to inferring from
-    # observed raw t/s (works when /props doesn't expose CUDA flags).
-    rtps = agg.get("raw_tps") or 0
-    hwc = detect_hw_class(props, observed_raw_tps=rtps if rtps else None)
-    band = lookup(hwc, detect_model_arch(props.get("model_path", "")),
-                  detect_quant(props.get("model_path", "")))
-    klass = classify_fit(rtps, band)
+    # Suite-aware hardware fit: quick-suite bands are scaled so the verdict
+    # is fair to short tasks. Fallback to observed t/s when /props is opaque.
+    hwc, band, klass, suite = fit_for(recs, props)
     html_doc = render_report([(tag, recs, band, klass, hwc)], props=props,
                              title=f"effbench · {tag}")
     with open(out_path, "w", encoding="utf-8") as f:

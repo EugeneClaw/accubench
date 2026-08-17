@@ -7,7 +7,7 @@
     {"hw_class": "phone_laptop", "model_arch": "llama3_8b",  "quant": "q4_k_m",  "tok_s_lo": 18, "tok_s_hi": 40, "ref_url": ""},
     {"hw_class": "desktop_gpu_mid", "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 30,  "tok_s_hi": 65, "ref_url": ""},
     {"hw_class": "desktop_gpu_mid", "model_arch": "llama3_8b",  "quant": "q4_k_m",  "tok_s_lo": 80,  "tok_s_hi": 130, "ref_url": ""},
-    {"hw_class": "desktop_gpu_high", "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 120, "tok_s_hi": 200, "ref_url": "own soak 2026-08-17, RTX 5090, b1-4df29be"},
+    {"hw_class": "desktop_gpu_high", "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 120, "tok_s_hi": 200, "ref_url": "own warm-cache soak 2026-08-17, RTX 5090, b1-4df29be"},
         {"hw_class": "desktop_gpu_high", "model_arch": "qwen3.27_b", "quant": "q5_k_m",  "tok_s_lo": 100, "tok_s_hi": 170, "ref_url": ""},
         {"hw_class": "desktop_gpu_high", "model_arch": "llama3_8b",  "quant": "q4_k_m",  "tok_s_lo": 250, "tok_s_hi": 400, "ref_url": ""},
         {"hw_class": "workstation",    "model_arch": "qwen3.27_b", "quant": "iq4_xs", "tok_s_lo": 200, "tok_s_hi": 320, "ref_url": ""},

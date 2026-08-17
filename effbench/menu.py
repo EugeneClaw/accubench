@@ -17,7 +17,7 @@ from .client import ServerClient
 from .ledger import load_ledger, aggregate
 from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
-                           lookup, classify_fit)
+                           lookup, classify_fit, fit_for)
 
 DATA_DIR = os.path.expanduser("~/.effbench")
 REPORTS_DIR = os.path.join(DATA_DIR, "reports")
@@ -197,12 +197,12 @@ def _do_compare():
     model_path = (props or {}).get("model_path", "")
     obs = (aggregate(ra).get("raw_tps", 0) + aggregate(rb).get("raw_tps", 0)) / 2
     hwc = detect_hw_class(props or {}, observed_raw_tps=obs if obs else None)
-    band = lookup(hwc, detect_model_arch(model_path), detect_quant(model_path)) if props else None
-    ka = classify_fit(aggregate(ra).get("raw_tps", 0), band)
-    kb = classify_fit(aggregate(rb).get("raw_tps", 0), band)
+    # suite-aware bands per side (quick runs get the ×0.89 scale)
+    _, band_a, ka, _ = fit_for(ra, props or {})
+    _, band_b, kb, _ = fit_for(rb, props or {})
     out = os.path.join(REPORTS_DIR, f"compare-{ta}-vs-{tb}.html")
     os.makedirs(REPORTS_DIR, exist_ok=True)
-    html = render_report([(ta, ra, band, ka, hwc), (tb, rb, band, kb, hwc)],
+    html = render_report([(ta, ra, band_a, ka, hwc), (tb, rb, band_b, kb, hwc)],
                          props=props, mode="compare")
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)

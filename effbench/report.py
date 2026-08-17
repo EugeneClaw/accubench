@@ -5,11 +5,15 @@ Three views:
 - compare view (two recipes) — side-by-side, per-task deltas, headline winners
 """
 import html
+import json
+import math
+import os
 import statistics
 from collections import OrderedDict
 
-from .explainer import for_task, PURPOSE_DESCRIPTIONS, DIFFICULTY_DESCRIPTIONS
-from .ledger import aggregate
+from .explainer import (for_task, fail_hint, PURPOSE_DESCRIPTIONS,
+                        DIFFICULTY_DESCRIPTIONS)
+from .ledger import aggregate, suite_of
 from .expectations import classify_fit, hw_class_blurb
 
 DARK = {
@@ -24,6 +28,27 @@ DARK = {
     "bad": "#e26a6a",
     "rule": "#2a3138",
 }
+
+_EXPECTED = None
+
+
+def _expected_pass(task_id):
+    """Did the reference rig (5090 + 27B IQ4_XS soak) pass this task?
+
+    Returns True/False from expected_pass.json, or None when unknown.
+    Badge context only — never affects grading.
+    """
+    global _EXPECTED
+    if _EXPECTED is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "expected_pass.json")
+        try:
+            with open(path, encoding="utf-8") as f:
+                _EXPECTED = json.load(f)
+        except Exception:
+            _EXPECTED = {}
+    bucket = "quick" if task_id.startswith("q-") else "full"
+    return _EXPECTED.get(bucket, {}).get(task_id)
 
 
 def _escape(s):
@@ -44,17 +69,27 @@ def _bar(value, vmax, color=None):
 
 
 def _radar(by_purpose, size=240):
-    """Radar chart of pass-rate by purpose, 0..1 axes."""
-    purposes = list(PURPOSE_DESCRIPTIONS.keys())
-    # ensure we draw all, even if missing
+    """Radar chart of pass rate by purpose.
+
+    Honest axes: only purposes that actually have tasks get an axis. Purposes
+    with no tasks in the suite are listed underneath as 'not tested' — a
+    missing axis is 'we never asked', never 'the model scored zero'.
+    """
+    tested = {p: s for p, s in by_purpose.items() if s.get("n")}
+    untested = [p for p in PURPOSE_DESCRIPTIONS if p not in tested]
+    purposes = [p for p in PURPOSE_DESCRIPTIONS if p in tested]
+    cos, sin = math.cos, math.sin
     n = len(purposes)
+    if n == 0:
+        note = ("No purposes tested — " + ", ".join(untested) + " not tested."
+                if untested else "No purposes tested.")
+        return f'<div class="hint">{_escape(note)}</div>'
     cx = cy = size / 2
     r = size * 0.38
     # axis rings
     rings = ""
     for level in (0.25, 0.5, 0.75, 1.0):
         pts = []
-        import math
         for i in range(n):
             a = (2 * math.pi * i / n) - math.pi / 2
             x = cx + r * level * math.cos(a)
@@ -66,16 +101,16 @@ def _radar(by_purpose, size=240):
     labels = []
     for i, p in enumerate(purposes):
         a = (2 * math.pi * i / n) - math.pi / 2
-        v = by_purpose.get(p, {}).get("pass_rate", 0) or 0
-        x = cx + r * v * math.cos(a)
-        y = cy + r * v * math.sin(a)
+        v = tested[p].get("pass_rate", 0) or 0
+        x = cx + r * v * cos(a)
+        y = cy + r * v * sin(a)
         data_pts.append(f"{x:.1f},{y:.1f}")
-        lx = cx + (r + 24) * math.cos(a)
-        ly = cy + (r + 18) * math.sin(a)
+        lx = cx + (r + 24) * cos(a)
+        ly = cy + (r + 18) * sin(a)
         anchor = "middle"
-        if math.cos(a) > 0.3:
+        if cos(a) > 0.3:
             anchor = "start"
-        elif math.cos(a) < -0.3:
+        elif cos(a) < -0.3:
             anchor = "end"
         labels.append(
             f'<text x="{lx:.1f}" y="{ly:.1f}" text-anchor="{anchor}" '
@@ -91,10 +126,14 @@ def _radar(by_purpose, size=240):
           f'fill-opacity="0.18" stroke="{DARK["accent"]}" stroke-width="2"/>'
         + "".join(labels)
     )
-    return (
+    svg = (
         f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" '
         f'style="display:block;margin:0 auto">{inner}</svg>'
     )
+    if untested:
+        note = "Not tested by this suite: " + ", ".join(untested) + "."
+        svg += f'<div class="hint" style="text-align:center">{_escape(note)}</div>'
+    return svg
 
 
 def _headline_card(label, value, sub="", color=None):
@@ -108,11 +147,115 @@ def _headline_card(label, value, sub="", color=None):
     )
 
 
+def _band_chart(agg, band, klass, suite, width=520, height=120):
+    """Your median vs the typical band, drawn honestly.
+
+    Shows the band as a shaded region with lo/hi labels, your median as a
+    marker, and mean/p10/p90 as a jitter strip below. The band source is
+    printed verbatim so nobody mistakes n=1 for a crowd.
+    """
+    obs = agg.get("raw_tps") or 0
+    lo, hi, src = band if band else (None, None, "")
+    lo = lo or 0
+    hi = max(hi or 0, obs * 1.25, 1)
+    vmax = max(hi * 1.18, obs * 1.18, 10)
+    def X(v):
+        return 14 + (v / vmax) * (width - 28)
+    parts = []
+    if band:
+        band_fill = (DARK["good"] if klass in ("in", "above") else
+                     DARK["warn"] if klass == "below" else DARK["accent"])
+        parts.append(
+            f'<rect x="{X(lo):.1f}" y="18" width="{X(hi)-X(lo):.1f}" height="26" '
+            f'rx="4" fill="{band_fill}" fill-opacity="0.18" stroke="{band_fill}" '
+            f'stroke-opacity="0.55"/>'
+        )
+        parts.append(
+            f'<text x="{X(lo):.1f}" y="58" text-anchor="middle" '
+            f'fill="{DARK["ink_dim"]}" font-size="10">{lo:.0f}</text>'
+        )
+        parts.append(
+            f'<text x="{X(hi):.1f}" y="58" text-anchor="middle" '
+            f'fill="{DARK["ink_dim"]}" font-size="10">{hi:.0f}</text>'
+        )
+    mark_color = (DARK["good"] if klass in ("in", "above") else DARK["warn"])
+    parts.append(
+        f'<line x1="{X(obs):.1f}" y1="12" x2="{X(obs):.1f}" y2="50" '
+        f'stroke="{mark_color}" stroke-width="3"/>'
+    )
+    parts.append(
+        f'<text x="{X(obs):.1f}" y="10" text-anchor="middle" '
+        f'fill="{mark_color}" font-size="11" font-weight="600">'
+        f'you {obs:.1f}</text>'
+    )
+    # p10/p90/mean jitter strip
+    p10, p90 = agg.get("p10_tps"), agg.get("p90_tps")
+    if p10 is not None and p90 is not None:
+        parts.append(
+            f'<rect x="{X(p10):.1f}" y="72" width="{max(2, X(p90)-X(p10)):.1f}" '
+            f'height="6" rx="3" fill="{DARK["panel2"]}" stroke="{DARK["rule"]}"/>'
+        )
+        for key, col in (("mean_tps", DARK["accent"]), ("raw_tps", DARK["ink"])):
+            v = agg.get(key)
+            if v is not None:
+                parts.append(
+                    f'<line x1="{X(v):.1f}" y1="68" x2="{X(v):.1f}" '
+                    f'y2="82" stroke="{col}" stroke-width="2"/>'
+                )
+        parts.append(
+            f'<text x="{X(p10):.1f}" y="96" text-anchor="middle" '
+            f'fill="{DARK["ink_dim"]}" font-size="10">p10 {p10:.0f}</text>'
+        )
+        tick_side = "start" if X(p90) < width * 0.85 else "end"
+        parts.append(
+            f'<text x="{X(p90):.1f}" y="96" text-anchor="{tick_side}" '
+            f'fill="{DARK["ink_dim"]}" font-size="10">p90 {p90:.0f}</text>'
+        )
+    # generation-only median: cache-invariant context
+    gen = agg.get("gen_tps_median")
+    if gen:
+        gx = X(min(gen, vmax * 0.97))
+        parts.append(
+            f'<line x1="{gx:.1f}" y1="66" x2="{gx:.1f}" y2="84" '
+            f'stroke="{DARK["accent"]}" stroke-width="2" stroke-dasharray="3 2"/>'
+        )
+        parts.append(
+            f'<text x="{gx:.1f}" y="62" text-anchor="middle" '
+            f'fill="{DARK["accent"]}" font-size="10">gen {gen:.0f}</text>'
+        )
+    note = "wall-clock includes prompt processing; gen is decode-only (cache-invariant)"
+    parts.append(
+        f'<text x="{width-14}" y="112" text-anchor="end" '
+        f'fill="{DARK["ink_dim"]}" font-size="10">{_escape(note)}</text>'
+    )
+    parts.append(
+        f'<text x="14" y="112" fill="{DARK["ink_dim"]}" font-size="10">'
+        f'{_escape("band: " + (suite or "this suite") + " on this hardware")}'
+        f'{(" — " + src) if src else ""}</text>'
+    )
+    return (
+        f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
+        f'style="max-width:100%">{"".join(parts)}</svg>'
+    )
+
+
 def _task_row(r, show_tag=False):
     check = "✓" if r.get("pass") else "✗"
     color = DARK["good"] if r.get("pass") else DARK["bad"]
     purpose, difficulty, plain = for_task(r.get("task", ""))
     tok_s = r.get("tok_s") or 0
+    # expected-pass badge: what the reference rig did on this task
+    exp = _expected_pass(r.get("task", ""))
+    badge = ""
+    if exp is False:
+        badge = ('<span class="tag dim" title="The reference rig '
+                 '(RTX 5090 + 27B IQ4_XS) also fails this task — a fail here '
+                 'is normal, not a fault in your setup.">ref fails too</span>')
+    elif exp is True and not r.get("pass"):
+        badge = ('<span class="tag" style="color:' + DARK["warn"] + '" '
+                 'title="The reference rig passes this task — this fail is '
+                 'worth a look.">ref passes</span>')
+    hint = "" if r.get("pass") else fail_hint(purpose, difficulty)
     return (
         f'<tr>'
         f'<td><span class="chk" style="color:{color}">{check}</span></td>'
@@ -124,6 +267,9 @@ def _task_row(r, show_tag=False):
         f'<td class="num">{(r.get("accept_pct") or 0):.0f}%</td>'
         + (f'<td class="tag">{_escape(r.get("tag", ""))}</td>' if show_tag else "")
         + '</tr>'
+        + (f'<tr class="failrow"><td></td><td colspan="7" class="hint">'
+           f'<b>Why it matters:</b> {_escape(hint)}</td></tr>' if hint else "")
+        + (f'<tr class="failrow"><td></td><td colspan="7" class="hint">{badge}</td></tr>' if badge else "")
     )
 
 
@@ -172,7 +318,7 @@ def _html_doc(title, content):
 # ---------- RUN VIEW (one recipe) ----------
 
 def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
-                    hw_class=None, title=None):
+                    hw_class=None, title=None, suite=None):
     agg = aggregate(recs)
     n = agg.get("n", 0)
     pr = agg.get("pass_rate", 0)
@@ -180,37 +326,55 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
     etps = agg.get("eff_tps", 0)
     title = title or f"effbench · {tag}"
     by_purpose = agg.get("by_purpose", {})
+    suite = suite or suite_of(recs)
 
-    # hardware-fit verdict
+    # hardware-fit verdict — honest about band provenance
+    src_note = ""
     if fit_band:
-        lo, hi, ref = fit_band
+        lo, hi, src = fit_band
+        scale_note = (" Quick tasks are short, so this band is scaled ×0.89 "
+                      "for a fair comparison." if suite == "quick" else "")
         if fit_class == "above":
             verdict_html = (
                 f'<div class="verdict good"><b>Faster than typical</b> for '
                 f'{_escape(hw_class or "this hardware")} '
-                f'(typical {lo}–{hi} tok/s, '
-                f'yours {rtps:.1f}).</div>'
+                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).{scale_note}</div>'
             )
         elif fit_class == "in":
             verdict_html = (
                 f'<div class="verdict good"><b>Typical</b> for '
                 f'{_escape(hw_class or "this hardware")} '
-                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).</div>'
+                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).{scale_note}</div>'
             )
         elif fit_class == "below":
+            gen = agg.get("gen_tps_median")
+            if gen and gen >= lo:
+                cache_note = (
+                    f" But generation-only speed is {gen:.1f} tok/s — inside "
+                    f"the typical band. Your server isn't slow; wall-clock is "
+                    f"dragged by prompt processing, which is normal on a "
+                    f"first/cold run or short tasks."
+                )
+            else:
+                cache_note = (
+                    " Common causes: background load, slow KV cache quant, "
+                    "reasoning model with thinking enabled, no speculative decoding."
+                )
             verdict_html = (
                 f'<div class="verdict warn"><b>Slower than typical</b> for '
                 f'{_escape(hw_class or "this hardware")} '
-                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}). '
-                f'Common causes: background load, slow KV cache quant, '
-                f'reasoning model with thinking enabled, no speculative decoding.'
-                f'</div>'
+                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).{scale_note}'
+                f'{cache_note}</div>'
             )
         else:
             verdict_html = (
                 f'<div class="verdict dim">No reference data for this '
                 f'{_escape(hw_class or "hardware")} + model combo.</div>'
             )
+        if src:
+            shown = (("reference: " + src[len("measured: "):])
+                     if src.startswith("measured:") else ("band source: " + src))
+            src_note = f'<div class="hint">{_escape(shown)}</div>'
     else:
         verdict_html = (
             '<div class="verdict dim">Could not detect hardware/model for '
@@ -241,19 +405,40 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
         if b:
             blurb = f'<div class="hint"><b>{_escape(hw_class)}:</b> {_escape(b)}</div>'
 
+    # generation-only card when the server reported it
+    gen_card = ""
+    if agg.get("gen_tps_median"):
+        gen_card = _headline_card(
+            "Generation-only", f"{agg['gen_tps_median']:.1f}",
+            "tok/s server-reported (excludes prompt processing)")
+
     body = f"""
     <h1>{_escape(title)}</h1>
-    <p class="sub">{n} tasks · pass rate {pr*100:.1f}% · generated by effbench</p>
+    <p class="sub">{n} tasks · pass rate {pr*100:.1f}% · {suite} suite · generated by effbench</p>
 
     <div class="row">
       {_headline_card("Pass rate", f"{pr*100:.1f}%", f"{agg.get('n_pass', 0)} of {n} tasks")}
-      {_headline_card("Raw speed", f"{rtps:.1f}", "tokens per second")}
-      {_headline_card("Effective speed", f"{etps:.1f}", "raw × pass rate")}
+      {_headline_card("Median speed", f"{rtps:.1f}", "tok/s · the headline number")}
+      {_headline_card("Effective speed", f"{etps:.1f}", "median × pass rate")}
+    </div>
+
+    <div class="row">
+      {_headline_card("Mean", f"{agg.get('mean_tps') or 0:.1f}", "tok/s · all tasks")}
+      {_headline_card("Peak", f"{agg.get('peak_tps') or 0:.1f}", "tok/s · fastest task")}
+      {_headline_card("p10–p90", f"{agg.get('p10_tps') or 0:.0f}–{agg.get('p90_tps') or 0:.0f}", "tok/s · task spread")}
       {_headline_card("Speculative decode", f"{(agg.get('accept_pct_median') or 0):.0f}%",
                        "draft accept rate (0 if none)")}
     </div>
+    {gen_card}
 
     {verdict_html}
+    {src_note}
+
+    <div class="panel">
+      <h2>Speed vs typical</h2>
+      <p class="sub">Your median against the typical band for this hardware + model — and where the band came from.</p>
+      {_band_chart(agg, fit_band, fit_class, suite)}
+    </div>
 
     <div class="panel">
       <h2>What this model is good for</h2>
@@ -272,7 +457,7 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
 
     <div class="panel">
       <h2>Every task</h2>
-      <p class="sub">A green tick means the model's answer passed the deterministic check. A red cross means it didn't — and why.</p>
+      <p class="sub">A green tick means the model's answer passed the deterministic check. A red ✗ gets a what-it-means note and a reference badge: <span class="tag dim">ref fails too</span> — the reference rig (RTX 5090 + 27B IQ4_XS) also fails this task, so a fail is expected here. <span class="tag" style="color:{DARK['warn']}">ref passes</span> — the reference rig passes it, so this fail is the interesting kind.</p>
       <table>
         <tr><th></th><th>task</th><th>what it asks</th><th>purpose</th><th>difficulty</th><th class="num">tok/s</th><th class="num">accept</th></tr>
         {task_rows}

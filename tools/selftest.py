@@ -90,6 +90,11 @@ def t_ledger():
     check("agg raw median", agg["raw_tps"] == 90.0, str(agg["raw_tps"]))
     check("agg eff", agg["eff_tps"] == 30.0, str(agg["eff_tps"]))
     check("agg cats", "c" in agg["categories"])
+    # v0.5 additive stats
+    check("agg mean", agg.get("mean_tps") == 90.0, str(agg.get("mean_tps")))
+    check("agg peak", agg.get("peak_tps") == 100.0, str(agg.get("peak_tps")))
+    check("agg min", agg.get("min_tps") == 80.0, str(agg.get("min_tps")))
+    check("agg p10/p90 present", "p10_tps" in agg and "p90_tps" in agg)
     with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as f:
         tmp = f.name
     try:
@@ -104,6 +109,88 @@ def t_ledger():
         os.unlink(tmp)
 
 
+def t_suite_of():
+    from effbench.ledger import suite_of
+    check("suite full", suite_of([{"task": "code-fizzbang"}]) == "full")
+    check("suite quick", suite_of([{"task": "q-fizzbang"}]) == "quick")
+    check("suite mixed", suite_of([{"task": "q-x"}, {"task": "code-y"}]) == "mixed")
+    check("suite empty", suite_of([]) == "full")
+
+
+def t_fit_for():
+    from effbench.expectations import fit_for
+    props = {"model_path": "Qwen3.8-27B-IQ4_XS.gguf", "build_info": "cuda"}
+    full = [{"task": "code-fizzbang", "pass": True, "tok_s": 165.0, "wall_s": 1.0}]
+    quick = [{"task": "q-fizzbang", "pass": True, "tok_s": 145.0, "wall_s": 1.0}]
+    hwc, band, klass, suite = fit_for(full, props)
+    check("fit_for full class", hwc == "desktop_gpu_high", hwc)
+    check("fit_for full suite", suite == "full")
+    check("fit_for full band", band and band[0] == 120 and band[1] == 200, str(band))
+    _, qband, _, qsuite = fit_for(quick, props)
+    check("fit_for quick suite", qsuite == "quick")
+    # quick band scaled: 120*0.89=106.8 -> 107, 200*0.89=178
+    check("fit_for quick band scaled",
+          qband and abs(qband[0] - 107) <= 1 and abs(qband[1] - 178) <= 1, str(qband))
+    check("fit_for band has source", bool(band and band[2]), str(band))
+
+
+def t_expected_pass():
+    from effbench.report import _expected_pass
+    # tasks the 2026-08-17 reference soak failed 255/255
+    check("expected fail known", _expected_pass("logic-soduko-unique") is False)
+    check("expected fail quick", _expected_pass("q-wordcount") is False)
+    check("expected pass known", _expected_pass("code-fizzbang") is True)
+    check("expected unknown", _expected_pass("made-up-task") is None)
+
+
+def t_radar_honest():
+    from effbench.report import _radar
+    # purpose with tasks: axis drawn
+    svg = _radar({"code": {"n": 2, "pass_rate": 1.0}})
+    check("radar draws tested axis", ">code<" in svg)
+    check("radar notes untested", "Not tested" in svg and "chat" in svg)
+    # no purposes at all: graceful note, no svg axes
+    svg0 = _radar({})
+    check("radar empty graceful", "Not tested" in svg0 or "No purposes" in svg0)
+
+
+def t_fail_hints():
+    from effbench.explainer import fail_hint
+    h = fail_hint("reasoning", "hard")
+    check("hint reasoning/hard", "--think" in h)
+    check("hint fallback", "grader" in fail_hint("extract", "medium"))
+
+
+def t_capture_fields():
+    """run_task() must record gen_tps/accept_pct from llama.cpp timings."""
+    from effbench.__main__ import run_task
+    from types import SimpleNamespace
+
+    class FakeClient:
+        """Mimics ServerClient.chat(): sets _perf from top-level timings."""
+
+        def chat(self, payload):
+            timings = {
+                "predicted_per_second": 123.4,
+                "draft_n": 15,
+                "draft_n_accepted": 12,
+            }
+            return {
+                "choices": [{"message": {"content": "hello"}}],
+                "usage": {"completion_tokens": 10},
+                "timings": timings,
+                "_perf": timings,  # ServerClient.chat() does this
+            }, None
+
+    task = {"id": "q-x", "prompt": "hi", "max_tokens": 8,
+            "grader": {"type": "contains", "needle": "hello"}}
+    args = SimpleNamespace(think=False, tag="t")
+    rec = run_task(FakeClient(), task, args, {}, "r", 1)
+    check("capture gen_tps", rec.get("gen_tps") == 123.4, str(rec.get("gen_tps")))
+    check("capture accept from timings", rec.get("accept_pct") == 80.0,
+          str(rec.get("accept_pct")))
+
+
 def t_cli():
     r = subprocess.run([sys.executable, "-m", "effbench", "validate",
                         "--suite", os.path.join(HERE, "suites")],
@@ -113,7 +200,9 @@ def t_cli():
 
 def main():
     print("effbench selftest")
-    for fn in (t_norm, t_extract, t_graders, t_tasks, t_ledger, t_cli):
+    for fn in (t_norm, t_extract, t_graders, t_tasks, t_ledger, t_suite_of,
+               t_fit_for, t_expected_pass, t_radar_honest, t_fail_hints,
+               t_capture_fields, t_cli):
         print(f"[{fn.__name__}]")
         fn()
     print(f"\n{PASS} passed, {FAIL} failed")

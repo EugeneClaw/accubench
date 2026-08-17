@@ -47,8 +47,29 @@ def aggregate(recs):
     return out
 
 
+def suite_of(recs):
+    """Which suite did these records come from? 'quick', 'full', or 'mixed'.
+
+    Quick-suite task ids all start with 'q-'. Called on every report render;
+    keep it O(n) over a few hundred records at most.
+    """
+    ids = {r.get("task", "") for r in recs}
+    if not ids:
+        return "full"
+    q = sum(1 for t in ids if t.startswith("q-"))
+    if q == 0:
+        return "full"
+    if q == len(ids):
+        return "quick"
+    return "mixed"
+
+
 def _flat_stats(recs):
-    """Stats for one homogeneous set of records (no category recursion)."""
+    """Stats for one homogeneous set of records (no category recursion).
+
+    raw_tps (median wall-clock) stays THE headline metric. mean/p10/p90/
+    peak_tps and gen_tps are additive context, never a replacement.
+    """
     if not recs:
         return {}
     done = [r for r in recs if not r.get("error")]
@@ -64,10 +85,21 @@ def _flat_stats(recs):
         "wall_total_s": round(sum(r.get("wall_s", 0) for r in recs), 1),
         "accept_pct": None,
     }
+    if toks:
+        st = sorted(toks)
+        out["mean_tps"] = round(statistics.mean(toks), 1)
+        out["peak_tps"] = round(st[-1], 1)
+        out["min_tps"] = round(st[0], 1)
+        k = max(1, len(st))
+        out["p10_tps"] = round(st[max(0, int(0.10 * k) - 1)], 1)
+        out["p90_tps"] = round(st[min(len(st) - 1, int(0.90 * k))], 1)
     accs = [r["accept_pct"] for r in done if r.get("accept_pct") is not None]
     if accs:
         out["accept_pct"] = round(statistics.mean(accs), 1)
         out["accept_pct_median"] = round(statistics.median(accs), 1)
+    gens = [r["gen_tps"] for r in done if r.get("gen_tps") is not None]
+    if gens:
+        out["gen_tps_median"] = round(statistics.median(gens), 1)
     if out["raw_tps"] is not None:
         out["eff_tps"] = round(out["raw_tps"] * out["pass_rate"], 1)
     return out

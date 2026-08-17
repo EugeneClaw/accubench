@@ -18,7 +18,7 @@ from urllib.parse import urlparse, parse_qs
 
 from . import __version__, config, wizard
 from .client import ServerClient
-from .ledger import append_record, load_ledger, aggregate
+from .ledger import append_record, load_ledger, aggregate, suite_of
 from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
                            lookup, classify_fit)
@@ -122,10 +122,12 @@ def _worker(which):
         hwc, klass, band = wizard._make_report(tag, LEDGER, props, out)
         bag = [r for r in load_ledger(LEDGER) if r.get("tag") == tag]
         agg = aggregate(bag)
+        suite = suite_of(bag)
         rtps = agg.get("raw_tps") or 0
         summary = {
             "tag": tag,
             "report": f"/report/{os.path.basename(out)}",
+            "suite": suite,
             "raw_tps": round(rtps, 1),
             "pass_rate": agg.get("pass_rate") or 0,
             "eff_tps": round(agg.get("eff_tps") or rtps * (agg.get("pass_rate") or 0), 1),
@@ -170,14 +172,22 @@ def _make_compare(tag_a, tag_b):
     model_path = (props or {}).get("model_path", "")
     obs = (aggregate(ra).get("raw_tps", 0) + aggregate(rb).get("raw_tps", 0)) / 2
     hwc = detect_hw_class(props or {}, observed_raw_tps=obs if obs else None)
-    band = lookup(hwc, detect_model_arch(model_path),
-                  detect_quant(model_path)) if props else None
-    ka = classify_fit(aggregate(ra).get("raw_tps", 0), band)
-    kb = classify_fit(aggregate(rb).get("raw_tps", 0), band)
+    arch = detect_model_arch(model_path)
+    quant = detect_quant(model_path)
+    band_a = lookup(hwc, arch, quant) if props else None
+    band_b = band_a
+    if props:
+        from .expectations import fit_for
+        # suite-aware bands per side (quick runs get the ×0.89 scale)
+        _, band_a, ka, _ = fit_for(ra, props)
+        _, band_b, kb, _ = fit_for(rb, props)
+    else:
+        ka = classify_fit(aggregate(ra).get("raw_tps", 0), band_a)
+        kb = classify_fit(aggregate(rb).get("raw_tps", 0), band_b)
     name = f"compare-{tag_a}-vs-{tag_b}.html"
     out = os.path.join(REPORTS_DIR, name)
     os.makedirs(REPORTS_DIR, exist_ok=True)
-    html = render_report([(tag_a, ra, band, ka, hwc), (tag_b, rb, band, kb, hwc)],
+    html = render_report([(tag_a, ra, band_a, ka, hwc), (tag_b, rb, band_b, kb, hwc)],
                          props=props, mode="compare")
     with open(out, "w", encoding="utf-8") as f:
         f.write(html)

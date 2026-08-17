@@ -2,6 +2,24 @@
 
 All notable changes to effbench, newest first.
 
+## 0.3.0 — 2026-08-17
+
+The "no CLI knowledge required" release. After installation, everything is menu-driven.
+
+**Added:**
+- Interactive menu: bare `effbench` (or `effbench ui`) opens a numbered menu — quick benchmark, full benchmark, compare two past runs, open a past report, settings, uninstall. No flags or subcommands needed for normal use.
+- Server auto-detection: config → `$EFFBENCH_URL` → common localhost ports (11434 llama.cpp/Ollama, 8080, 5000, 1234 LM Studio); falls back to a friendly prompt. First working URL remembered in `~/.effbench/config.json`.
+- All user data (`ledger.jsonl`, `reports/*.html`, `config.json`) now lives under `~/.effbench/` instead of the current directory.
+- `effbench uninstall` — removes the install (refuses to delete git clones, asks before touching saved reports).
+- One-line uninstallers: `uninstall.sh` (Mac/Linux) and `uninstall.ps1` (Windows).
+
+**Changed:**
+- Installers (`install.sh` / `install.ps1`) auto-launch the menu on completion — install is now the only technical step.
+- Reports open in the browser automatically after every run (config: `open`).
+
+**Fixed:**
+- Windows launcher (`effbench.cmd`) invoked `__main__.py` as a plain file — relative imports would crash. Now runs `python -m effbench` with `PYTHONPATH` set correctly.
+
 ## 0.2.0 — 2026-08-17
 
 The "make it usable for everyone" release. Repo renamed from `llama-effbench` to `effbench`; no llama.cpp-specific references remain.

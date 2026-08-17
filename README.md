@@ -27,19 +27,36 @@ curl -fsSL https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.sh
 irm https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.ps1 | iex
 ```
 
-Then point it at a running model:
+Install it and a menu opens — press 1, get a report in your browser. The one-line install is the only technical step; after that everything is menu-driven.
 
-```bash
-effbench go                                # uses http://localhost:11434 if no config
-effbench go --url http://192.168.1.x:11434 # or any local URL on your network
-effbench go --url http://my-server:8080    # or anywhere with an OpenAI-compatible API
+The menu finds your AI server automatically (llama.cpp, LM Studio, Ollama, vLLM — anything with an OpenAI-compatible API on localhost or your network), runs 12 short tasks (~15 seconds), and opens a colour-coded report in your browser. Can't find your server? It asks you where it is, once, and remembers.
+
+Typing `effbench` any time re-opens the menu:
+
+```
+  effbench 0.3.0
+  how fast — and how accurate — is your local AI?
+
+   1) quick benchmark          (~15 seconds)
+   2) full benchmark           (2-4 minutes)
+   3) compare two past runs
+   4) open a past report
+   5) settings
+   6) uninstall
+   q) quit
 ```
 
-`effbench go` will save the first URL you use to `~/.effbench/config.json` so you only have to type it once.
+Your results, settings and saved reports live in `~/.effbench/` — not scattered in whatever folder you ran the command from.
 
-That's it. It probes your server, runs 12 short tasks (~10 seconds), and opens a colour-coded HTML report in your browser.
+**Uninstall** is one line too:
 
-**First run?** `effbench go` will ask for a URL once and remember it. You can also run `effbench setup` first — it tries a few common URLs and saves the first one that works.
+```bash
+curl -fsSL https://raw.githubusercontent.com/EugeneClaw/effbench/main/uninstall.sh | bash
+```
+
+```powershell
+irm https://raw.githubusercontent.com/EugeneClaw/effbench/main/uninstall.ps1 | iex
+```
 
 **Persist your config?** All customisations live in `~/.effbench/config.json`. Manage it with:
 
@@ -74,18 +91,23 @@ effbench csv --tag my-run --out results.csv
 
 ---
 
-## The 9 commands
+## The commands
+
+Most people only ever need the menu — type `effbench` and press numbers. These exist for scripting and fine control:
 
 | Command | What it does |
 |---|---|
-| `effbench setup` | First-run wizard. Finds your server at common URLs, saves the working one. |
+| `effbench` | **The menu.** Quick bench, full bench, compare, past reports, settings, uninstall. |
+| `effbench ui` | Same menu, explicit. |
+| `effbench go` | Non-interactive wizard: probe, run, render, open. Good for scripts. |
+| `effbench setup` | Find your server at common URLs, save the working one. |
 | `effbench config` | View or edit `~/.effbench/config.json` (subcommands: `show`, `get`, `set`, `path`). |
-| `effbench go` | The benchmark wizard. Probe, run, render, open. Zero arguments needed. |
 | `effbench run` | Lower-level. Choose suite, runs, tag, ledger. |
 | `effbench report` | Render an HTML report from any ledger. |
 | `effbench compare` | Two tags, side-by-side HTML report. |
 | `effbench share` | Copy-pasteable Markdown summary for Discord/forums/blogs. |
 | `effbench csv` | Per-task CSV (default), summary CSV (`--summary`), or compare CSV (`--compare OTHER`). |
+| `effbench uninstall` | Remove effbench (asks before deleting anything). |
 | `effbench validate` | Self-test every task grader against known-good and known-bad fixtures. |
 
 ---

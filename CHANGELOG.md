@@ -2,6 +2,18 @@
 
 All notable changes to effbench, newest first.
 
+## 0.7.0 — 2026-08-17
+
+The reframe — the post-run moment redesigned per the external design mandate (docs/kimi-report-v3.html). "62 beats 200": accuracy is part of the speed equation, and the UI now argues it instead of apologising for it.
+
+- **Verdict line** — every run opens with a four-state sentence (Flawless, at speed / Fast — and right / Fast — mostly right / Quick — but not trustworthy yet), followed by the facts. Zero sarcasm, zero cheerleading.
+- **Confrontation lanes** — "The number you could post": your checked 62 vs your unchecked 202, side by side, never on one scale. "You own both numbers. Only one survives the follow-up question: 'Yeah — but were the answers right?'"
+- **Speed waterfall** — peak → typical generation → wall → effective, one scale, each drop explained by its cause (best-case vs median / cold prompt processing / the truth discount). Absorbs the old micro-bars and fit line.
+- **Pass ticks** — one tick per task, ✓/✕, failures named with a fix target. Replaces the pass-rate arc as the primary pass display. Aria-labelled as one image.
+- **Champion ceremony** — the ★ badge graduated: first run = "FIRST BASELINE — CHAMPION", beating your own history = "NEW CHAMPION".
+- **Killed**: the forever-sweeping segment (a spinner in a suit — steady 35% mint fill now; the elapsed clock and live pass tally carry the "not hung" job), the tone-matched brag line, the always-on count-up (fresh results only now).
+- **Live pass tally** during runs ("passed 7/7 so far") and amber fail-aware rail segments.
+
 ## 0.6.1 — 2026-08-17
 
 The effective-speed release — accuracy stops being a footnote and becomes part of the number itself.

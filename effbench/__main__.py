@@ -378,10 +378,21 @@ def cmd_setup(args):
     print()
 
 
+def cmd_uninstall(args):
+    from . import menu
+    menu._do_uninstall()
+    return 0
+
+
+def cmd_ui(args):
+    from . import menu
+    return menu.main_menu()
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="effbench",
                                 description="quality-weighted benchmark for any OpenAI-compatible inference server")
-    sub = p.add_subparsers(dest="cmd", required=True)
+    sub = p.add_subparsers(dest="cmd")
 
     pg = sub.add_parser("go", help="wizard: probe, run, render, open — zero args needed")
     pg.add_argument("--url", help="server URL (default: $EFFBENCH_URL or http://localhost:11434)")
@@ -450,6 +461,12 @@ def build_parser():
                      help="export side-by-side per-task comparison vs OTHER_TAG")
     pcv.set_defaults(func=cmd_csv)
 
+    pu = sub.add_parser("uninstall", help="remove effbench (asks before deleting anything)")
+    pu.set_defaults(func=cmd_uninstall)
+
+    pu2 = sub.add_parser("ui", help="open the interactive menu (same as bare `effbench`)")
+    pu2.set_defaults(func=cmd_ui)
+
     pv = sub.add_parser("validate", help="self-test every task grader")
     pv.add_argument("--suite", required=True)
     pv.set_defaults(func=cmd_validate)
@@ -460,6 +477,10 @@ def build_parser():
 def main():
     parser = build_parser()
     args = parser.parse_args()
+    if not getattr(args, "cmd", None):
+        # bare `effbench` → the interactive menu
+        from . import menu
+        return menu.main_menu()
     return args.func(args)
 
 

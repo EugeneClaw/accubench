@@ -50,38 +50,28 @@ if (Test-Path (Join-Path $Src ".git")) {
   git clone --depth 1 --quiet $Repo $Src
 }
 
-# 4. Launcher script.
+# 4. Launcher script — runs the module properly (relative imports work).
 $launcher = Join-Path $Bin "effbench.cmd"
 @"
 @echo off
-REM effbench launcher
-set EFFBEN_SRC=%LOCALAPPDATA%\effbench\share\effbench
-"%EFFBEN_SRC%\..\..\python" "%EFFBEN_SRC%\effbench\__main__.py" %*
-"@ | Out-File -Encoding ASCII $launcher
-
-# Simpler: rely on python being on PATH.
-@"
-@echo off
-set EFFBEN_SRC=%LOCALAPPDATA%\effbench\share\effbench
-python "%EFFBEN_SRC%\effbench\__main__.py" %*
+REM effbench launcher — sets PYTHONPATH so `python -m effbench` resolves.
+set "EFFBEN_SRC=$Src"
+set "PYTHONPATH=$Src;%PYTHONPATH%"
+$py -m effbench %*
 "@ | Out-File -Encoding ASCII $launcher
 
 Write-Host "  OK installed: $launcher"
 
-# 5. PATH hint.
+# 5. PATH.
 $pathEnv = [Environment]::GetEnvironmentVariable("PATH", "User")
 if ($pathEnv -notlike "*$Bin*") {
   Write-Host ""
-  Write-Host "  ! $Bin is not on your PATH."
-  Write-Host "    Adding it now..."
+  Write-Host "  ! adding $Bin to your PATH..."
   [Environment]::SetEnvironmentVariable("PATH", "$pathEnv;$Bin", "User")
   $env:PATH = "$env:PATH;$Bin"
-  Write-Host "    (open a new terminal to pick it up)"
 }
 
 Write-Host ""
-Write-Host "  next:"
-Write-Host "    effbench setup    # finds your server, saves the URL"
-Write-Host "    effbench go       # benchmark your server"
+Write-Host "  done. starting effbench..."
 Write-Host ""
-Write-Host "  done."
+& $launcher

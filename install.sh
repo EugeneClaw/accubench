@@ -72,8 +72,6 @@ case ":$PATH:" in
 esac
 
 echo ""
-echo "  next:"
-echo "    effbench setup    # finds your server, saves the URL"
-echo "    effbench go       # benchmark your server"
+echo "  installed. starting effbench..."
 echo ""
-echo "  done."
+exec "$BIN/effbench"

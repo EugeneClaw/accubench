@@ -197,7 +197,14 @@
   .arc-num { font-size:26px; font-weight:600; font-variant-numeric:tabular-nums; }
   .arc-lbl { font-family:var(--mono); font-size:9.5px; color:var(--ink3); margin-top:4px; letter-spacing:0.1em; }
 
-  /* past runs */
+  /* leaderboard badges */
+.lb-badge { display:inline-block; font-size:10px; letter-spacing:.4px; padding:2px 7px;
+  border-radius:999px; border:1px solid var(--hair, #232B35); color:var(--ink2, #C3CDD9);
+  margin-right:6px; vertical-align:1px; }
+.lb-cloud { background:rgba(122,162,247,.12); border-color:rgba(122,162,247,.35); }
+.lb-local { background:rgba(94,231,160,.10); border-color:rgba(94,231,160,.30); }
+
+/* past runs */
   .runrow { display:grid; grid-template-columns:96px 1fr 64px 56px 60px; gap:10px; align-items:center;
             padding:8px 10px; border-radius:8px; font-size:12.5px; }
   .runrow:hover { background:var(--graphite); }
@@ -358,7 +365,15 @@
       <div class="t">No runs yet</div>
       <div class="d">Run the quick benchmark above — about fifteen seconds — and this panel fills with your history, ready to compare.</div>
     </div>
-    <div id="cmp-ui">
+    <div id="leaderboard" style="margin-top:22px; display:none;">
+    <div style="display:flex; align-items:baseline; gap:10px;">
+      <h3 style="margin:0;">Leaderboard</h3>
+      <span class="hint">best run per model · ordered by accuracy</span>
+    </div>
+    <div id="lb-body" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="cmp-ui">
       <div class="cmp-row">
         <div class="field">
           <label>newer run</label>
@@ -637,7 +652,7 @@ function renderState(s) {
     document.getElementById('summary').style.display = 'block';
     renderVerdict(sm, true);
     setRunStatus('done — run ' + sm.tag);
-    loadTags();
+    loadTags(); loadLeaderboard();
     if (s.config && s.config.open) window.open(sm.report, '_blank');
   }
 }
@@ -810,7 +825,8 @@ async function loadTags() {
       `<span class="rr-when">${t.when}</span>` +
       `<span class="rr-tag"><b>${t.custom || t.tag}</b>` +
       (t.custom ? `<div class="rr-orig">orig: ${t.tag}</div>` : ``) +
-      ` <a href="#" class="rr-rename" onclick="renameTag('${t.tag}');return false">✏️</a></span>` +
+      ` <a href="#" class="rr-rename" onclick="renameTag('${t.tag}');return false">✏️</a>` +
+      ` <a href="#" class="rr-rename" onclick="deleteReport('${t.tag}');return false">🗑️</a></span>` +
       `<span class="rr-num">${t.tps ? t.tps.toFixed(0) : '–'}</span>` +
       `<span class="rr-num">${Math.round(t.pass * 100)}%</span>` +
       `<span class="rr-link"><a href="/report/${t.tag}.html" target="_blank">report →</a></span></div>`
@@ -823,6 +839,32 @@ async function loadTags() {
   if (tags.length >= 2) { a.selectedIndex = 0; b.selectedIndex = 1; }
 }
 
+async function loadLeaderboard() {
+  const r = await api('/api/leaderboard');
+  const el = document.getElementById('lb-body');
+  if (!r.entries || !r.entries.length) { el.innerHTML = '<div class="hint">no runs yet</div>'; return; }
+  const trophy = ['🏆', '🥈', '🥉'];
+  const cars = ['🏎️', '🚗', '🚕'];
+  el.innerHTML = '<div class="runrow head"><span>#</span><span>model</span><span class="rr-num">best % right</span><span class="rr-num">eff t/s</span><span class="rr-num">runs</span></div>' +
+    r.entries.map(e => {
+      const acc = (e.rank <= 3) ? trophy[e.rank-1] + ' ' : (e.rank) + '.';
+      const spd = (e.rank <= 3) ? ' <span style="opacity:.75; font-size:12px;">' + cars[e.rank-1] + '</span>' : '';
+      const badge = '<span class="lb-badge ' + (e.where === 'cloud' ? 'lb-cloud' : 'lb-local') + '">' + (e.where === 'cloud' ? '☁ cloud' : '🖥 local') + '</span>';
+      return '<div class="runrow"><span>' + acc + '</span>' +
+        '<span class="rr-tag">' + badge + ' <b>' + (e.label) + '</b>' + spd + '</span>' +
+        '<span class="rr-num">' + Math.round(e.pass * 100) + '%</span>' +
+        '<span class="rr-num">' + (e.eff_tps ? e.eff_tps.toFixed(1) : '–') + '</span>' +
+        '<span class="rr-num">' + e.runs + '</span></div>';
+    }).join('');
+}
+
+async function deleteReport(tag) {
+  if (!confirm('Delete the report for ' + tag + '? Ledger history is kept; only the HTML report goes.')) return;
+  reportName = tag + '.html';
+  const r = await api('/api/report-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: reportName})});
+  if (r.ok) { loadTags(); loadLeaderboard(); loadLeaderboard(); } else alert(r.error || 'delete failed');
+}
+
 async function renameTag(tag) {
   const cur = (window.__customNames || {})[tag] || tag;
   const v = prompt('Rename this run (the original tag is kept):', cur);
@@ -831,7 +873,7 @@ async function renameTag(tag) {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({name: tag + '.html', custom: v.trim()})
   });
-  if (r.ok) loadTags(); else alert(r.error || 'rename failed');
+  if (r.ok) { loadTags(); loadLeaderboard(); } else alert(r.error || 'rename failed');
 }
 
 async function doCompare() {
@@ -1044,6 +1086,25 @@ async function refreshTargetSummary() {
   document.getElementById('target-value').textContent = txt;
 }
 
+async function keyStatusHint() {
+  // "key on file" hint: does the keystore hold one for the current url+model?
+  try {
+    const r = await api('/api/keys');
+    const idents = (r && r.idents) || [];
+    const url = document.getElementById('cfg-url').value.trim();
+    const model = (document.getElementById('cfg-cloud-model') || {}).value || '';
+    const hit = idents.find(i => i.split('::')[0] === url);
+    const el = document.getElementById('cloud-key-status');
+    if (!el) return;
+    if (hit) {
+      el.textContent = '\u2713 key saved on this machine \u2014 Test connection works without re-pasting';
+      el.style.color = 'var(--mint, #5EE7A0)';
+    } else {
+      el.textContent = '';
+    }
+  } catch (e) {}
+}
+
 async function loadConfig() {
   const s = await api('/api/state');
   document.getElementById('ver').textContent = 'v' + s.version;
@@ -1059,6 +1120,7 @@ async function loadConfig() {
     if (c.provider === 'custom') document.getElementById('cfg-cloud-url').value = c.url || '';
     cloudSelChanged();
     refreshKeyStatus(c.url, c.model);
+    keyStatusHint();
   }
   await refreshTargetSummary();
   if (!c.provider && !s.config.url) openWiz();   // blank config → wizard greets you
@@ -1108,6 +1170,7 @@ async function saveConfig() {
   if (r.key_saved) {
     document.getElementById('cfg-cloud-key').value = '';
     refreshKeyStatus(cloud ? cloud.url : '', cloud ? cloud.model : '');
+    keyStatusHint();
   }
   setTimeout(() => document.getElementById('cfg-msg').textContent = '', 4000);
 }
@@ -1123,7 +1186,7 @@ async function refreshKeyStatus(url, model) {
 }
 
 loadConfig();
-loadTags();
+loadTags(); loadLeaderboard();
 poll();
 </script>
 </body>

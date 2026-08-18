@@ -1,3 +1,7 @@
+## 0.9.12 — 2026-08-18
+
+Leaderboard (best run per model), report delete, saved-key hint.
+
 # Changelog
 
 All notable changes to effbench, newest first.

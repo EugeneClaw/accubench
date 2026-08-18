@@ -288,6 +288,59 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/tags":
             self._json({"tags": _tags_summary()})
 
+        elif u.path == "/api/leaderboard":
+            import re as _re
+            tags = _tags_summary()
+            models = {}
+            for t in tags:
+                base = _re.sub(r"-\d{8}-\d{6}$", "", t["tag"])
+                m = models.setdefault(base, {"runs": 0, "best_pass": -1.0,
+                                             "best_tps": 0.0, "best_eff": 0.0,
+                                             "best_tag": t["tag"], "custom": t.get("custom")})
+                m["runs"] += 1
+                if (t.get("pass") or 0) > m["best_pass"]:
+                    m["best_pass"] = t.get("pass") or 0
+                    m["best_tps"] = t.get("tps") or 0
+                    m["best_eff"] = t.get("eff_tps") or 0
+                    m["best_tag"] = t["tag"]
+                    m["custom"] = t.get("custom")
+            out = []
+            for base, m in models.items():
+                out.append({
+                    "model": base,
+                    "label": m["custom"] or base,
+                    "runs": m["runs"],
+                    "pass": m["best_pass"],
+                    "tps": m["best_tps"],
+                    "eff_tps": m["best_eff"],
+                    "tag": m["best_tag"],
+                    "where": "cloud" if "cloud" in base else "local",
+                })
+            out.sort(key=lambda x: (-x["pass"], -(x.get("eff_tps") or 0)))
+            for i, e in enumerate(out):
+                e["rank"] = i + 1
+            self._json({"entries": out})
+
+        elif u.path == "/api/rename":
+            body = self._body()
+            name = os.path.basename(body.get("name") or "")
+            if not name.endswith(".html"):
+                self._json({"ok": False, "error": "bad name"}, 400)
+                return
+            custom = (body.get("custom") or "").strip()[:80]
+            side = os.path.join(REPORTS_DIR, name[:-5] + ".name")
+            try:
+                if custom:
+                    with open(side, "w", encoding="utf-8") as f:
+                        f.write(custom)
+                else:
+                    if os.path.exists(side):
+                        os.remove(side)
+                self._json({"ok": True})
+            except OSError as e:
+                self._json({"ok": False, "error": str(e)}, 500)
+            return
+
         elif u.path == "/api/reports":
             import glob as _g
             reps = sorted(_g.glob(os.path.join(REPORTS_DIR, "*.html")),
@@ -449,24 +502,38 @@ class Handler(BaseHTTPRequestHandler):
             n = keystore.wipe()
             self._json({"ok": True, "removed": n})
 
-        elif u.path == "/api/rename":
+        elif u.path == "/api/report-delete":
             body = self._body()
             name = os.path.basename(body.get("name") or "")
-            if not name.endswith(".html"):
+            if not name.endswith(".html") or ".." in name:
                 self._json({"ok": False, "error": "bad name"}, 400)
                 return
-            custom = (body.get("custom") or "").strip()[:80]
-            side = os.path.join(REPORTS_DIR, name[:-5] + ".name")
+            target = os.path.join(REPORTS_DIR, name)
+            removed = []
             try:
-                if custom:
-                    with open(side, "w", encoding="utf-8") as f:
-                        f.write(custom)
-                else:
-                    if os.path.exists(side):
-                        os.remove(side)
-                self._json({"ok": True})
+                for suffix in (".html", ".name"):
+                    p = target[:-5] + suffix if suffix == ".name" else target
+                    if os.path.exists(p):
+                        os.remove(p)
+                        removed.append(os.path.basename(p))
+                self._json({"ok": True, "removed": removed})
             except OSError as e:
                 self._json({"ok": False, "error": str(e)}, 500)
+            return
+
+        elif u.path == "/api/key-reveal":
+            body = self._body()
+            url = (body.get("url") or "").strip()
+            model = (body.get("model") or "").strip()
+            if not url:
+                self._json({"ok": False, "error": "url required"}, 400)
+                return
+            from . import keystore
+            key = keystore.load_key(url, model)
+            if key:
+                self._json({"ok": True, "key": key, "len": len(key)})
+            else:
+                self._json({"ok": False, "error": "no key stored for this url/model"})
             return
 
         elif u.path == "/api/config":
@@ -502,7 +569,6 @@ class Handler(BaseHTTPRequestHandler):
 
         elif u.path == "/api/config-reset":
             body = self._body()
-            import os
             removed = {"config": False, "keys": 0}
             try:
                 if os.path.exists(config.PATH):

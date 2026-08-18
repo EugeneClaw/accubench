@@ -302,6 +302,9 @@
         <button class="btn" id="btn-full" onclick="startRun('full')">
           Full <small>2–4 minutes</small>
         </button>
+        <button class="btn" id="btn-stop" style="display:none; border-color:#5a3a3a;" onclick="stopRun()">
+          ■ Stop
+        </button>
       </div>
     </div>
 
@@ -365,10 +368,10 @@
       <div class="t">No runs yet</div>
       <div class="d">Run the quick benchmark above — about fifteen seconds — and this panel fills with your history, ready to compare.</div>
     </div>
-    <div id="leaderboard" style="margin-top:22px; display:none;">
+    <div id="leaderboard" style="margin-top:22px;">
     <div style="display:flex; align-items:baseline; gap:10px;">
       <h3 style="margin:0;">Leaderboard</h3>
-      <span class="hint">best run per model · ordered by accuracy</span>
+      <span class="hint">best run per model · full-suite runs first, quick after · never mixed</span>
     </div>
     <div id="lb-body" style="margin-top:10px;"></div>
   </div>
@@ -583,6 +586,23 @@ async function startRun(which) {
   poll();
 }
 
+function showStop(vis) {
+  const b = document.getElementById('btn-stop');
+  if (b) b.style.display = vis ? '' : 'none';
+}
+
+async function stopRun() {
+  const b = document.getElementById('btn-stop');
+  if (b) { b.disabled = true; b.textContent = 'stopping…'; }
+  try {
+    await api('/api/stop', {method:'POST'});
+    setRunStatus('stopping — finishing the current task first…', true);
+  } catch (e) { /* alert already raised by api() */ }
+  finally {
+    if (b) { b.disabled = false; b.textContent = '■ Stop'; }
+  }
+}
+
 function poll() {
   if (pollTimer) clearTimeout(pollTimer);
   pollTimer = setTimeout(async () => {
@@ -596,6 +616,7 @@ function renderState(s) {
   const busy = ['detecting', 'running', 'reporting'].includes(s.phase);
   document.getElementById('btn-quick').disabled = busy;
   document.getElementById('btn-full').disabled = busy;
+  showStop(['detecting', 'running'].includes(s.phase));
   setMast(busy ? 'running' : 'local only');
 
   if (s.phase === 'idle' && !s.summary) setRunStatus('pick a benchmark to start');
@@ -610,6 +631,7 @@ function renderState(s) {
   if (s.phase === 'running') {
     setRunStatus('running ' + (s.which === 'quick' ? 'quick' : 'full') +
                  ' benchmark — ' + (s.model || ''), true);
+    showStop(true);
     // rail sized from the real total (quick×3, full×runs change it)
     const want = Math.min(s.tasks_total || 12, 40);
     if (document.querySelectorAll('#rail .seg').length !== want) buildRail(want);
@@ -639,6 +661,12 @@ function renderState(s) {
     setRunStatus('building report…', true);
     document.querySelectorAll('#rail .seg').forEach(seg => seg.className = 'seg done');
     document.getElementById('cur-task').textContent = '';
+  }
+
+  if (s.phase === 'cancelled') {
+    setRunStatus('cancelled — partial results were not kept', false);
+    document.getElementById('progress').style.display = 'none';
+    runStartedAt = null;
   }
 
   if (s.phase === 'error') {
@@ -867,7 +895,7 @@ async function deleteReport(tag) {
   if (!confirm('Delete the report for ' + tag + '? Ledger history is kept; only the HTML report goes.')) return;
   reportName = tag + '.html';
   const r = await api('/api/report-delete', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({name: reportName})});
-  if (r.ok) { loadTags(); loadLeaderboard(); loadLeaderboard(); } else alert(r.error || 'delete failed');
+  if (r.ok) { loadTags(); loadLeaderboard(); } else alert(r.error || 'delete failed');
 }
 
 async function renameTag(tag) {

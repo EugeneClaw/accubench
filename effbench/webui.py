@@ -33,7 +33,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 _state_lock = threading.Lock()
 _state = {
     "running": False,
-    "phase": "idle",        # idle | detecting | running | reporting | done | error
+    "cancel": False,        # set by /api/stop; worker checks between tasks
+    "phase": "idle",        # idle | detecting | running | reporting | done | error | cancelled
     "which": None,
     "tasks_done": 0,
     "tasks_total": 0,
@@ -76,6 +77,8 @@ def _worker(which):
         from .tasks import load_suite
         from types import SimpleNamespace
 
+        with _state_lock:
+            _state["cancel"] = False
         _set(phase="detecting", error=None, rows=[], summary=None,
              tasks_done=0, tasks_total=0, current_task="", which=which)
         cloud = config.get("cloud") or None
@@ -128,6 +131,10 @@ def _worker(which):
         done = 0
         for ri in range(1, runs + 1):
             for t in tasks:
+                with _state_lock:
+                    if _state.get("cancel"):
+                        _set(phase="cancelled")
+                        return
                 _set(current_task=t["id"])
                 ns = SimpleNamespace(think=False, tag=tag)
                 rec = run_task(client, t, ns, server, run_id, ri)
@@ -291,10 +298,14 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/leaderboard":
             import re as _re
             tags = _tags_summary()
+            for t in tags:
+                recs = [r for r in load_ledger(LEDGER) if r.get("tag") == t["tag"]]
+                t["suite"] = suite_of(recs)
             models = {}
             for t in tags:
                 base = _re.sub(r"-\d{8}-\d{6}$", "", t["tag"])
-                m = models.setdefault(base, {"runs": 0, "best_pass": -1.0,
+                key = (base, t.get("suite") or "unknown")
+                m = models.setdefault(key, {"runs": 0, "best_pass": -1.0,
                                              "best_tps": 0.0, "best_eff": 0.0,
                                              "best_tag": t["tag"], "custom": t.get("custom")})
                 m["runs"] += 1
@@ -305,10 +316,12 @@ class Handler(BaseHTTPRequestHandler):
                     m["best_tag"] = t["tag"]
                     m["custom"] = t.get("custom")
             out = []
-            for base, m in models.items():
+            for (base, suite), m in models.items():
+                suffix = " (quick)" if suite == "quick" else ""
                 out.append({
-                    "model": base,
-                    "label": m["custom"] or base,
+                    "model": base + suffix,
+                    "label": (m["custom"] or base) + suffix,
+                    "suite": suite,
                     "runs": m["runs"],
                     "pass": m["best_pass"],
                     "tps": m["best_tps"],
@@ -316,7 +329,8 @@ class Handler(BaseHTTPRequestHandler):
                     "tag": m["best_tag"],
                     "where": "cloud" if "cloud" in base else "local",
                 })
-            out.sort(key=lambda x: (-x["pass"], -(x.get("eff_tps") or 0)))
+            suite_order = {"full": 0, "quick": 1}
+            out.sort(key=lambda x: (suite_order.get(x["suite"], 2), -x["pass"], -(x.get("eff_tps") or 0)))
             for i, e in enumerate(out):
                 e["rank"] = i + 1
             self._json({"entries": out})
@@ -432,6 +446,15 @@ class Handler(BaseHTTPRequestHandler):
     # -- POST
     def do_POST(self):
         u = urlparse(self.path)
+        if u.path == "/api/stop":
+            if _state.get("phase") not in ("running", "detecting"):
+                self._json({"ok": False, "error": "no run in progress"}, 409)
+                return
+            with _state_lock:
+                _state["cancel"] = True
+            self._json({"ok": True, "acknowledged": True})
+            return
+
         if u.path == "/api/run":
             body = self._body()
             which = body.get("which")

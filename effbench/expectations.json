@@ -1,5 +1,5 @@
 {
-  "_doc": "Hardware-typical raw t/s bands for common models + quant combos. Used by the report to say 'fast for your hardware' / 'typical for this class'. Numbers are typical generation-only t/s from public community benchmarks as of Aug 2026. They are NOT a guarantee; they are context. If your number is way above the band, something might be off (smaller model, slot contention helped, missing think-tag overhead). If way below, same the other way. Bands reflect the median task in our 1024-1500 token benchmark. Bands compare TYPING SPEED (generation-only) only \u2014 never wall.",
+  "_doc": "Hardware-typical raw t/s bands for common models + quant combos. Used by the report to say 'fast for your hardware' / 'typical for this class'. Numbers are typical generation-only t/s from public community benchmarks as of Aug 2026. They are NOT a guarantee; they are context. If your number is way above the band, something might be off (smaller model, slot contention helped, missing think-tag overhead). If way below, same the other way. Bands reflect the median task in our 1024-1500 token benchmark. Bands compare TYPING SPEED (generation-only) only — never wall.",
   "_note": "Update entries as the field moves. Add a new model+hw_class entry rather than overwriting. Tags: hw_class, model_arch, quant, tok_s_lo, tok_s_hi, ref_url",
   "entries": [
     {
@@ -47,7 +47,7 @@
       "model_arch": "qwen3.27_b",
       "quant": "iq4_xs",
       "tok_s_lo": 150,
-      "tok_s_hi": 260,
+      "tok_s_hi": 200,
       "ref_url": "community benchmarks: r/LocalLLaMA 5090 threads + llama.cpp discussions, Aug 2026"
     },
     {

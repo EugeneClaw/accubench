@@ -423,7 +423,7 @@ def _brag_line(rtps, pr, etps, gen, peak):
     return f'<div class="brag brag-hero">{"".join(bits)}</div>'
 
 
-def _band_chart(agg, band, klass, suite, width=520, height=140):
+def _band_chart(agg, band, klass, suite, width=520, height=70):
     """Your TYPING SPEED vs the typical band, with the band's basis shown.
 
     The band and the marker are both generation-only (what the community
@@ -432,8 +432,9 @@ def _band_chart(agg, band, klass, suite, width=520, height=140):
     obs = agg.get("gen_tps_median") or agg.get("raw_tps") or 0
     lo, hi, src = band if band else (None, None, "")
     lo = lo or 0
-    hi = max(hi or 0, obs * 1.25, 1)
-    vmax = max(hi * 1.18, obs * 1.18, 10)
+    hi = hi or 0
+    # the AXIS stretches so a fast marker fits; the BAND stays true to its numbers
+    vmax = max(hi, obs * 1.15, 10)
     def X(v):
         return 14 + (v / vmax) * (width - 28)
     parts = []
@@ -463,54 +464,9 @@ def _band_chart(agg, band, klass, suite, width=520, height=140):
         f'fill="{mark_color}" font-size="11" font-weight="600">'
         f'you {obs:.1f}</text>'
     )
-    # p10/p90/mean jitter strip
-    p10, p90 = agg.get("p10_tps"), agg.get("p90_tps")
-    if p10 is not None and p90 is not None:
-        parts.append(
-            f'<rect x="{X(p10):.1f}" y="72" width="{max(2, X(p90)-X(p10)):.1f}" '
-            f'height="6" rx="3" fill="{DARK["panel2"]}" stroke="{DARK["rule"]}"/>'
-        )
-        for key, col in (("mean_tps", DARK["accent"]), ("raw_tps", DARK["ink"])):
-            v = agg.get(key)
-            if v is not None:
-                parts.append(
-                    f'<line x1="{X(v):.1f}" y1="68" x2="{X(v):.1f}" '
-                    f'y2="82" stroke="{col}" stroke-width="2"/>'
-                )
-        parts.append(
-            f'<text x="{X(p10):.1f}" y="96" text-anchor="middle" '
-            f'fill="{DARK["ink_dim"]}" font-size="10">p10 {p10:.0f}</text>'
-        )
-        tick_side = "start" if X(p90) < width * 0.85 else "end"
-        parts.append(
-            f'<text x="{X(p90):.1f}" y="96" text-anchor="{tick_side}" '
-            f'fill="{DARK["ink_dim"]}" font-size="10">p90 {p90:.0f}</text>'
-        )
-    # generation-only median: cache-invariant context
-    gen = agg.get("gen_tps_median")
-    if gen:
-        gx = X(min(gen, vmax * 0.97))
-        parts.append(
-            f'<line x1="{gx:.1f}" y1="66" x2="{gx:.1f}" y2="84" '
-            f'stroke="{DARK["accent"]}" stroke-width="2" stroke-dasharray="3 2"/>'
-        )
-        parts.append(
-            f'<text x="{gx:.1f}" y="62" text-anchor="middle" '
-            f'fill="{DARK["accent"]}" font-size="10">gen {gen:.0f}</text>'
-        )
-    # provenance + explanation on separate lines — they can collide when long
-    parts.append(
-        f'<text x="14" y="112" fill="{DARK["ink_dim"]}" font-size="10">'
-        f'{_escape("band: " + (suite or "this suite") + " on this hardware")}'
-        f'{(" — " + src) if src else ""}</text>'
-    )
-    parts.append(
-        f'<text x="14" y="126" fill="{DARK["ink_dim"]}" font-size="10">'
-        f'{_escape("wall-clock includes prompt processing; gen is decode-only (cache-invariant)")}</text>'
-    )
     return (
         f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}" '
-        f'style="max-width:100%">{"".join(parts)}</svg>'
+        f'style="max-width:100%">{" ".join(parts)}</svg>'
     )
 
 
@@ -639,17 +595,16 @@ def _css():
     .eq-x {{ color: {DARK['ink3']}; font-size: 11px; }}
     .eq-res {{ color: {DARK['accent']}; }}
     .eq-unit {{ color: {DARK['ink3']}; font-size: 10.5px; }}
-    .brag {{ margin-top: 14px; font-size: 13.5px; line-height: 1.55; color: {DARK['ink_dim']};
-            max-width: 620px; }}
+    .brag {{ margin-top: 14px; font-size: 13.5px; line-height: 1.55; color: {DARK['ink_dim']}; }}
     .brag b {{ color: {DARK['ink']}; }}
     .brag-hero {{ font-size: 16.5px; color: {DARK['ink']}; border: 1px solid {DARK['hairline']};
                  border-left: 3px solid {DARK['accent']}; background: {DARK['panel']};
-                 padding: 14px 18px; border-radius: 8px; max-width: 680px; }}
+                 padding: 14px 18px; border-radius: 8px; }}
     .brag-hero b {{ color: {DARK['accent']}; }}
     .fix-guidance {{ margin-top: 10px; font-size: 14px; line-height: 1.55; color: {DARK['ink']};
                     background: {DARK['panel']}; border: 1px solid {DARK['hairline']};
                     border-left: 3px solid {DARK['warn']}; padding: 12px 16px;
-                    border-radius: 8px; max-width: 680px; }}
+                    border-radius: 8px; }}
     .fix-guidance b {{ color: {DARK['warn']}; }}
     .meta-strip {{ display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 10px 0 4px;
                   padding: 10px 14px; background: {DARK['panel']};

@@ -2,6 +2,10 @@
 
 All notable changes to effbench, newest first.
 
+## 0.9.2 — 2026-08-18
+
+Report polish.
+
 ## 0.9.1 — 2026-08-18
 
 Grades recalibrated.

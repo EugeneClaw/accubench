@@ -125,12 +125,12 @@ def t_fit_for():
     hwc, band, klass, suite = fit_for(full, props)
     check("fit_for full class", hwc == "desktop_gpu_high", hwc)
     check("fit_for full suite", suite == "full")
-    check("fit_for full band", band and band[0] == 150 and band[1] == 260, str(band))
+    check("fit_for full band", band and band[0] == 150 and band[1] == 200, str(band))
     _, qband, _, qsuite = fit_for(quick, props)
     check("fit_for quick suite", qsuite == "quick")
-    # quick band scaled: 150*0.89=133.5 -> 134, 260*0.89=231
+    # quick band scaled: 150*0.89=133.5 -> 134, 200*0.89=178
     check("fit_for quick band scaled",
-          qband and abs(qband[0] - 134) <= 1 and abs(qband[1] - 231) <= 1, str(qband))
+          qband and abs(qband[0] - 134) <= 1 and abs(qband[1] - 178) <= 1, str(qband))
     check("fit_for band has source", bool(band and band[2]), str(band))
 
 

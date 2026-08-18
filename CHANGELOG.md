@@ -2,6 +2,10 @@
 
 All notable changes to effbench, newest first.
 
+## 0.9.1 — 2026-08-18
+
+Grades recalibrated.
+
 ## 0.9.0 — 2026-08-19
 
 The report reads like English now; the cloud panel explains itself.

@@ -1,7 +1,7 @@
 """Letter grade for a run's pass rate.
 
-A ≥93 · B+ ≥87 · B ≥80 · C ≥70 · D ≥55 · E ≥40 · F below · U = not run.
-(no tasks completed — server unreachable, auth failure, etc).
+A* ≥100 (perfect) · A+ ≥96 · A ≥93 · A− ≥90 · B+ ≥87 · B ≥80 · B− ≥75 ·
+C+ ≥65 · C ≥55 · C− ≥45 · D ≥35 · F below · U = not run.
 
 Grades judge ACCURACY only. Speed is reported separately; a fast F is still
 an F. Colour mapping lives in tokens.py (PASS/WARN/FAIL ramp) so both
@@ -15,22 +15,32 @@ text says what to do about the remainder.
 from __future__ import annotations
 
 GRADES = [
+    ("A*", 100, "good"),
+    ("A+", 96, "good"),
     ("A", 93, "good"),
+    ("A−", 90, "good"),
     ("B+", 87, "good"),
     ("B", 80, "pass"),
-    ("C", 70, "warn"),
-    ("D", 55, "warn"),
-    ("E", 40, "fail"),
+    ("B−", 75, "pass"),
+    ("C+", 65, "warn"),
+    ("C", 55, "warn"),
+    ("C−", 45, "fail"),
+    ("D", 35, "fail"),
     ("F", 0, "fail"),
 ]
 
 LABELS = {
+    "A*": "perfect — every task correct",
+    "A+": "near-perfect — one slip in fifty",
     "A": "top-tier accuracy",
+    "A−": "strong — a few slips",
     "B+": "excellent — a handful of slips",
     "B": "good — minor gaps only",
+    "B−": "solid — some real misses",
+    "C+": "usable — real misses to chase",
     "C": "usable, with a fix target",
-    "D": "noticeably gappy",
-    "E": "struggling",
+    "C−": "gappy — accuracy needs work",
+    "D": "struggling",
     "F": "accuracy fails the run",
 }
 

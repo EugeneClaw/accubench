@@ -260,10 +260,11 @@
 .wiz-sub { font-size:13px; color:var(--ink2,#C4CDD8); margin-bottom:18px; }
 .wiz-choices { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px; }
 .wiz-choice { border:1px solid var(--hair,#232B35); border-radius:10px; padding:18px 16px;
-  cursor:pointer; text-align:left; background:transparent; transition:border-color .15s, transform .15s; }
+  cursor:pointer; text-align:left; background:transparent; color:var(--ink,#E8EDF4);
+  font:inherit; transition:border-color .15s, transform .15s; }
 .wiz-choice:hover { border-color:var(--accent,#7FE7B4); transform:translateY(-1px); }
-.wiz-choice .big { font-size:15px; font-weight:650; margin-bottom:6px; }
-.wiz-choice .small { font-size:12px; color:var(--ink3,#9AA6B5); line-height:1.45; }
+.wiz-choice .big { font-size:15px; font-weight:650; margin-bottom:6px; color:var(--ink,#E8EDF4); }
+.wiz-choice .small { font-size:12px; color:var(--ink2,#9AA6B5); line-height:1.45; }
 .wiz-nav { display:flex; gap:10px; align-items:center; margin-top:20px; }
 .wiz-stepnum { font-size:11px; color:var(--ink3,#9AA6B5); margin-right:auto; }
 .wiz-skip { font-size:12px; color:var(--ink3,#9AA6B5); cursor:pointer; text-decoration:underline; background:none; border:none; padding:0; }
@@ -384,7 +385,6 @@
       <button class="btn" style="margin-left:auto;" onclick="openWiz()">Run setup wizard</button>
     </div>
 
-    </div>
     <div class="field">
       <label>runs per task (full benchmark)</label>
       <select id="cfg-runs">
@@ -437,6 +437,7 @@
       <label>AI server URL</label>
       <input type="text" id="cfg-url" placeholder="http://localhost:11434" style="width:340px;">
       <div class="hint">where your model server lives (llama.cpp, LM Studio, Ollama, vLLM…)</div>
+    </div>
       <div style="margin-top:10px;">
         <button class="btn" onclick="wizDetect()">🔍 Detect my server</button>
         <span id="wiz-detect-result" class="hint"></span>

@@ -19,6 +19,7 @@ TASK_PROFILES = {
     "q-palindrome":        ("code",       "easy",   "Yes/no classification"),
     "q-sum-sq":            ("code",       "easy",   "Simple loop and a print"),
     "q-fib10":             ("reasoning",  "easy",   "A sequence completion"),
+    "q-chat-greeting":     ("chat",       "easy",   "Reply like a person, not a manual"),
     "q-wordcount":         ("extract", "medium", "Count words in a sentence"),
     "q-handshakes":        ("reasoning",  "medium", "Count combinations"),
     "q-prob-coin":         ("reasoning",  "medium", "Probability from first principles"),

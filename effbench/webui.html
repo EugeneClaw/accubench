@@ -206,6 +206,9 @@
   .rr-when { font-family:var(--mono); font-size:10.5px; color:var(--ink3); }
   .rr-tag { font-family:var(--mono); font-size:11px; color:var(--ink); overflow:hidden;
             text-overflow:ellipsis; white-space:nowrap; }
+  .rr-orig { font-size:9.5px; color:var(--ink3); margin-top:1px; }
+  .rr-rename { opacity:0.55; font-size:10px; text-decoration:none; }
+  .rr-rename:hover { opacity:1; }
   .rr-num { font-family:var(--mono); font-size:11px; text-align:right; color:var(--ink2);
             font-variant-numeric:tabular-nums; }
   .rr-link { font-family:var(--mono); font-size:10.5px; text-align:right; }
@@ -357,15 +360,21 @@
       <label>cloud endpoint (optional)</label>
       <select id="cfg-cloud" onchange="cloudSelChanged()">
         <option value="">none — local server only</option>
-        <option value="zai">z.ai (GLM models) — key from GLM_API_KEY</option>
-        <option value="openai">OpenAI (GPT models) — key from OPENAI_API_KEY</option>
-        <option value="openrouter">OpenRouter (incl. Claude, Llama, Gemini) — key from OPENROUTER_API_KEY</option>
+        <option value="zai">z.ai — GLM models</option>
+        <option value="openai">OpenAI — GPT models</option>
+        <option value="openrouter">OpenRouter — most models incl. Claude & Gemini</option>
         <option value="custom">custom OpenAI-compatible…</option>
       </select>
+      <div class="hint" id="cloud-preset-note"></div>
       <input type="text" id="cfg-cloud-url" placeholder="custom base URL, e.g. https://provider.example/v4" style="width:340px; display:none;">
+      <div class="hint" id="cloud-url-hint" style="display:none;">The API address — prefilled per provider. Change only if your provider gave you a different one.</div>
       <input type="text" id="cfg-cloud-model" placeholder="model id, e.g. glm-5.3" style="width:340px; display:none;">
+      <div class="hint" id="cloud-model-hint" style="display:none;">Model name exactly as your provider writes it — z.ai: <code>glm-5.3</code> · OpenAI: <code>gpt-5.2</code> · OpenRouter: <code>anthropic/claude-sonnet-4.6</code></div>
       <input type="text" id="cfg-cloud-keyenv" placeholder="env var holding the API key, e.g. GLM_API_KEY" style="width:340px; display:none;">
-      <div class="hint">the API key itself is never stored — effbench reads it from the environment variable at run time. Cloud speeds include network latency and are labelled cloud.</div>
+      <div class="hint" id="cloud-keyenv-hint" style="display:none;">Type the <b>name</b> of the environment variable that holds your key — <u>not the key itself</u>. The key never enters effbench; it's read from your environment at run time.</div>
+      <button class="btn" id="cloud-test-btn" style="display:none; margin-top:6px;" onclick="testCloudConn()">⚡ Test connection</button>
+      <span id="cloud-test-result"></span>
+      <div class="hint">Cloud speeds include network latency and are labelled cloud in every report.</div>
     </div>
     <div class="field">
       <label>runs per task (full benchmark)</label>
@@ -687,6 +696,8 @@ function openReport() {
 async function loadTags() {
   const r = await api('/api/tags');
   const tags = r.tags || [];
+  window.__customNames = {};
+  tags.forEach(t => { if (t.custom) window.__customNames[t.tag] = t.custom; });
   const body = document.getElementById('tags-body');
   const first = document.getElementById('first-run');
   const cmp = document.getElementById('cmp-ui');
@@ -703,7 +714,9 @@ async function loadTags() {
     tags.map(t =>
       `<div class="runrow">` +
       `<span class="rr-when">${t.when}</span>` +
-      `<span class="rr-tag">${t.tag}</span>` +
+      `<span class="rr-tag"><b>${t.custom || t.tag}</b>` +
+      (t.custom ? `<div class="rr-orig">orig: ${t.tag}</div>` : ``) +
+      ` <a href="#" class="rr-rename" onclick="renameTag('${t.tag}');return false">✏️</a></span>` +
       `<span class="rr-num">${t.tps ? t.tps.toFixed(0) : '–'}</span>` +
       `<span class="rr-num">${Math.round(t.pass * 100)}%</span>` +
       `<span class="rr-link"><a href="/report/${t.tag}.html" target="_blank">report →</a></span></div>`
@@ -711,9 +724,20 @@ async function loadTags() {
 
   const a = document.getElementById('cmp-a'), b = document.getElementById('cmp-b');
   a.innerHTML = b.innerHTML = tags.map(t =>
-    `<option value="${t.tag}">${t.when} · ${t.tps ? t.tps.toFixed(0) : '–'} tok/s · ${Math.round(t.pass * 100)}%</option>`
+    `<option value="${t.tag}">${t.when} · ${t.custom || t.tag} · ${t.tps ? t.tps.toFixed(0) : '–'} tok/s · ${Math.round(t.pass * 100)}%</option>`
   ).join('');
   if (tags.length >= 2) { a.selectedIndex = 0; b.selectedIndex = 1; }
+}
+
+async function renameTag(tag) {
+  const cur = (window.__customNames || {})[tag] || tag;
+  const v = prompt('Rename this run (the original tag is kept):', cur);
+  if (v === null) return;
+  const r = await api('/api/rename', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name: tag + '.html', custom: v.trim()})
+  });
+  if (r.ok) loadTags(); else alert(r.error || 'rename failed');
 }
 
 async function doCompare() {
@@ -734,16 +758,43 @@ const CLOUD_PRESETS = {
   openrouter: {url: 'https://openrouter.ai/api/v1', keyenv: 'OPENROUTER_API_KEY'},
   custom: null
 };
+const CLOUD_NOTES = {
+  zai: 'You have a z.ai account (GLM subscription or API credits). Key page: z.ai/manage-apikey/apikey-list',
+  openai: 'You have an OpenAI platform account (platform.openai.com). Pay-per-token API key.',
+  openrouter: 'One key, most models on earth (Claude, Gemini, Llama…). Good if you don\'t want three accounts. openrouter.ai/keys',
+  custom: 'Any other OpenAI-compatible API (Ollama Cloud, Together, Groq, DeepSeek…). You\'ll need their base URL, a model id, and a key.'
+};
 function cloudSelChanged() {
   const v = document.getElementById('cfg-cloud').value;
   const custom = v === 'custom', any = !!v;
+  const note = document.getElementById('cloud-preset-note');
+  note.textContent = any ? ('Which one? — ' + (CLOUD_NOTES[v] || '')) : '';
+  note.style.display = any ? 'block' : 'none';
   for (const id of ['cfg-cloud-url', 'cfg-cloud-model', 'cfg-cloud-keyenv'])
     document.getElementById(id).style.display = any ? 'block' : 'none';
   document.getElementById('cfg-cloud-url').style.display = (any && custom) || (!any) ? 'none' : 'block';
+  document.getElementById('cloud-url-hint').style.display = (any && !custom) ? 'block' : 'none';
+  document.getElementById('cloud-model-hint').style.display = any ? 'block' : 'none';
+  document.getElementById('cloud-keyenv-hint').style.display = any ? 'block' : 'none';
+  document.getElementById('cloud-test-btn').style.display = any ? 'inline-block' : 'none';
   if (!custom && any) {
     document.getElementById('cfg-cloud-url').value = CLOUD_PRESETS[v].url;
     document.getElementById('cfg-cloud-keyenv').value = CLOUD_PRESETS[v].keyenv;
   }
+}
+async function testCloudConn() {
+  const btn = document.getElementById('cloud-test-btn');
+  const out = document.getElementById('cloud-test-result');
+  btn.disabled = true; out.textContent = 'testing…';
+  try {
+    const r = await api('/api/cloud-test', 'POST', collectCloudCfg());
+    out.innerHTML = r.ok
+      ? '<span style="color:var(--good,green)">✓ works — ' + (r.detail || 'connection ok') + '</span>'
+      : '<span style="color:var(--bad,red)">✗ ' + (r.detail || 'failed') + '</span>';
+  } catch (e) {
+    out.innerHTML = '<span style="color:var(--bad,red)">✗ ' + e + '</span>';
+  }
+  btn.disabled = false;
 }
 async function loadConfig() {
   const s = await api('/api/state');
@@ -761,22 +812,23 @@ async function loadConfig() {
   }
 }
 
+function collectCloudCfg() {
+  const pv = document.getElementById('cfg-cloud').value;
+  if (!pv) return null;
+  return {
+    provider: pv,
+    url: pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
+                         : (CLOUD_PRESETS[pv] || {}).url,
+    model: document.getElementById('cfg-cloud-model').value.trim(),
+    key_env: document.getElementById('cfg-cloud-keyenv').value.trim()
+  };
+}
 async function saveConfig() {
   const url = document.getElementById('cfg-url').value.trim();
   if (url) {
     try { await api('/api/detect'); } catch (e) {}
   }
-  const pv = document.getElementById('cfg-cloud').value;
-  let cloud = null;
-  if (pv) {
-    cloud = {
-      provider: pv,
-      url: pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
-                           : CLOUD_PRESETS[pv].url,
-      model: document.getElementById('cfg-cloud-model').value.trim(),
-      key_env: document.getElementById('cfg-cloud-keyenv').value.trim()
-    };
-  }
+  const cloud = collectCloudCfg();
   const r = await api('/api/config', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({

@@ -3,4 +3,4 @@
 effective t/s = raw t/s × task pass-rate
 """
 
-__version__ = "0.8.1"
+__version__ = "0.9.0"

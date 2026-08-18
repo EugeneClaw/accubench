@@ -154,8 +154,17 @@ def _tags_summary():
         bag = [r for r in recs if r["tag"] == tag]
         agg = aggregate(bag)
         when = datetime.fromtimestamp(min(r.get("ts", 0) for r in bag))
+        # custom display name (rename feature) — sidecar next to the report
+        custom = None
+        side = os.path.join(REPORTS_DIR, f"{tag}.name")
+        try:
+            with open(side, encoding="utf-8") as f:
+                custom = f.read().strip() or None
+        except OSError:
+            pass
         out.append({
             "tag": tag,
+            "custom": custom,
             "when": when.strftime("%Y-%m-%d %H:%M"),
             "pass": agg.get("pass_rate") or 0,
             "tps": agg.get("raw_tps") or 0,

@@ -5,6 +5,26 @@ import os
 REQUIRED = ("id", "prompt", "grader")
 GRADER_TYPES = {"exact", "contains", "contains_all", "regex", "code", "json"}
 
+_GRADER_CACHE = {}
+
+
+def grader_for(task_id, suites_dir=None):
+    """Grader dict for a task id, searching all suites. Memoised."""
+    if task_id in _GRADER_CACHE:
+        return _GRADER_CACHE[task_id]
+    d = suites_dir or os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "suites")
+    found = None
+    try:
+        for t in load_suite(d):
+            if t["id"] == task_id:
+                found = t["grader"]
+                break
+    except Exception:
+        found = None
+    _GRADER_CACHE[task_id] = found
+    return found
+
 
 def load_suite(path):
     """Load tasks from a JSON file or a directory of *.json files. Returns list, sorted by id."""

@@ -76,7 +76,39 @@ def grade_regex(g, content):
     m = rx.search(content)
     if m:
         return True, f"matched at {m.start()}"
+    # near-miss probe: same pattern, case-folded — catches 'Apples' vs 'apples'
+    rxi = re.compile(g["pattern"], re.DOTALL | re.IGNORECASE)
+    if rxi.search(content):
+        return False, "format-only: matches when case is ignored"
     return False, "no regex match"
+
+
+def near_miss(g, content):
+    """True when a FAILED task's answer is substantively right and only the
+    surface format differs (case, whitespace, terminator). Used by the report
+    to separate 'the model knows it' from 'the model didn't get there'.
+
+    Heuristic, deliberately cheap: re-run each grader case-folded and
+    whitespace-normalised. A pass there means the miss was cosmetic.
+    """
+    t = g.get("type")
+    folded = " ".join(str(content).split()).casefold()
+    try:
+        if t == "exact":
+            return _norm(g["expect"]).casefold() == folded
+        if t == "contains":
+            return any(str(n).casefold() in folded for n in (g.get("any_of") or [g["needle"]]))
+        if t == "contains_all":
+            return all(str(n).casefold() in folded for n in g["needles"])
+        if t == "regex":
+            return re.search(g["pattern"], folded, re.DOTALL | re.IGNORECASE) is not None
+        if t == "code":
+            return False  # code tasks: stdout mismatch is a real mismatch
+        if t == "json":
+            return False  # structural: treat as real
+    except Exception:
+        return False
+    return False
 
 
 def grade_code(g, content):

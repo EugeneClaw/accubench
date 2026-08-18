@@ -125,12 +125,12 @@ def t_fit_for():
     hwc, band, klass, suite = fit_for(full, props)
     check("fit_for full class", hwc == "desktop_gpu_high", hwc)
     check("fit_for full suite", suite == "full")
-    check("fit_for full band", band and band[0] == 120 and band[1] == 200, str(band))
+    check("fit_for full band", band and band[0] == 150 and band[1] == 260, str(band))
     _, qband, _, qsuite = fit_for(quick, props)
     check("fit_for quick suite", qsuite == "quick")
-    # quick band scaled: 120*0.89=106.8 -> 107, 200*0.89=178
+    # quick band scaled: 150*0.89=133.5 -> 134, 260*0.89=231
     check("fit_for quick band scaled",
-          qband and abs(qband[0] - 107) <= 1 and abs(qband[1] - 178) <= 1, str(qband))
+          qband and abs(qband[0] - 134) <= 1 and abs(qband[1] - 231) <= 1, str(qband))
     check("fit_for band has source", bool(band and band[2]), str(band))
 
 
@@ -152,10 +152,10 @@ def t_radar_tested_axes():
     check("ladder carries counts", "15/15" in html and "0/3" in html)
     check("ladder ranks by pass rate", html.index("code") < html.index("extract"))
     check("ladder zero shows sliver", "width:1.5%" in html)
-    check("ladder notes untested", "not tested" in html and "chat" in html)
+    check("ladder notes untested", "not asked" in html and "chat" in html)
     # no purposes at all: graceful note
     html0 = _purpose_ladder({})
-    check("ladder empty graceful", "No purposes" in html0 or "not tested" in html0)
+    check("ladder empty graceful", "No purposes" in html0 or "not asked" in html0)
 
 
 def t_fail_hints():

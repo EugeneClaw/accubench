@@ -166,12 +166,13 @@ def fit_for(recs, props):
     """
     agg = aggregate(recs)
     observed = agg.get("raw_tps") or 0
+    gen_median = agg.get("gen_tps_median") or 0
     suite = suite_of(recs)
     # Class inference prefers gen-only t/s when the server reports it: it is
     # cache-invariant, so a cold single run doesn't misclassify the hardware
     # (a 5090 cold quick run reads ~66 wall — mid-class — but ~141 gen, which
     # is correctly high-class and matches warm wall on the same rig).
-    infer_from = agg.get("gen_tps_median") or observed
+    infer_from = gen_median or observed
     # Cloud endpoints have no hardware class — no local GPU sits behind them.
     # Bands would be nonsense ("typical for a phone"), so skip fit entirely.
     if (props or {}).get("cloud"):
@@ -184,7 +185,10 @@ def fit_for(recs, props):
         if band and suite == "quick":
             lo, hi, src = band
             band = (round(lo * QUICK_SCALE), round(hi * QUICK_SCALE), src)
-    klass = classify_fit(observed, band)
+    # Compare like with like: the bands are gen-only, so classify on gen-only.
+    # (Wall drags in prompt processing and cold-cache penalties — mixing it
+    # into a gen-only band told fast rigs they were slow.)
+    klass = classify_fit(gen_median or observed, band)
     return hwc, band, klass, suite
 
 

@@ -287,17 +287,46 @@ class Handler(BaseHTTPRequestHandler):
             import glob as _g
             reps = sorted(_g.glob(os.path.join(REPORTS_DIR, "*.html")),
                           key=os.path.getmtime, reverse=True)
-            self._json({"reports": [
-                {"name": os.path.basename(r),
-                 "when": time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(r)))}
-                for r in reps[:50]]})
+            out = []
+            for r in reps[:50]:
+                entry = {"name": os.path.basename(r),
+                         "when": time.strftime("%Y-%m-%d %H:%M", time.localtime(os.path.getmtime(r)))}
+                side = r[:-5] + ".name"
+                try:
+                    with open(side, encoding="utf-8") as f:
+                        entry["custom"] = f.read().strip() or None
+                except OSError:
+                    entry["custom"] = None
+                out.append(entry)
+            self._json({"reports": out})
 
         elif u.path.startswith("/report/"):
             name = os.path.basename(u.path[len("/report/"):])
             if not name.endswith(".html"):
                 self._json({"error": "not found"}, 404)
                 return
-            self._file(os.path.join(REPORTS_DIR, name), "text/html; charset=utf-8")
+            path = os.path.join(REPORTS_DIR, name)
+            # inject custom name into the served page if one exists
+            side = path[:-5] + ".name"
+            try:
+                with open(side, encoding="utf-8") as f:
+                    custom = f.read().strip()
+                if custom:
+                    import re as _re
+                    with open(path, "rb") as f:
+                        html = f.read()
+                    html = _re.sub(rb"<h1>[^<]*</h1>",
+                                   f"<h1>{custom}</h1>".encode(), html, count=1)
+                    body = html
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+            except OSError:
+                pass
+            self._file(path, "text/html; charset=utf-8")
 
         elif u.path == "/api/detect":
             url, props, tried = _detect_server()
@@ -330,6 +359,55 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"report": path})
             else:
                 self._json({"error": "runs not found in ledger"}, 404)
+
+        elif u.path == "/api/cloud-test":
+            body = self._body()
+            from .cloud import CloudClient
+            from .client import is_cloud_url
+            curl = (body.get("url") or "").strip()
+            model = (body.get("model") or "").strip()
+            kenv = (body.get("key_env") or "").strip()
+            if not curl or not is_cloud_url(curl):
+                self._json({"ok": False, "detail": "not a valid cloud URL"})
+                return
+            if not model:
+                self._json({"ok": False, "detail": "model id is empty"})
+                return
+            key = os.environ.get(kenv) if kenv else None
+            if not key:
+                self._json({"ok": False,
+                            "detail": f"environment variable '{kenv or '?'}' is not set — set it first (it holds your API key; effbench never stores it)"})
+                return
+            try:
+                cc = CloudClient(curl, model, kenv)
+                txt, err = cc.chat({"messages": [{"role": "user", "content": "Say OK"}],
+                                    "max_tokens": 40})
+                if err:
+                    self._json({"ok": False, "detail": err[:200]})
+                else:
+                    self._json({"ok": True, "detail": f"model replied ({len(txt or '')} chars)"})
+            except Exception as e:
+                self._json({"ok": False, "detail": (type(e).__name__ + ": " + str(e))[:200]})
+            return
+        elif u.path == "/api/rename":
+            body = self._body()
+            name = os.path.basename(body.get("name") or "")
+            if not name.endswith(".html"):
+                self._json({"ok": False, "error": "bad name"}, 400)
+                return
+            custom = (body.get("custom") or "").strip()[:80]
+            side = os.path.join(REPORTS_DIR, name[:-5] + ".name")
+            try:
+                if custom:
+                    with open(side, "w", encoding="utf-8") as f:
+                        f.write(custom)
+                else:
+                    if os.path.exists(side):
+                        os.remove(side)
+                self._json({"ok": True})
+            except OSError as e:
+                self._json({"ok": False, "error": str(e)}, 500)
+            return
 
         elif u.path == "/api/config":
             body = self._body()

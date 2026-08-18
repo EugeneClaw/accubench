@@ -8,10 +8,11 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*273\\b"
+        "pattern": "ANSWER:\\s*273\\b",
+        "case_sensitive": false
       },
-      "good_output": "123456789 divided by 997:\n997 \u00d7 123828 = 123456516\n123456789 \u2212 123456516 = 273\nANSWER: 273",
-      "bad_output": "997 \u00d7 123828 = 123456516, so the remainder is small.\nANSWER: 55"
+      "good_output": "123456789 divided by 997:\n997 × 123828 = 123456516\n123456789 − 123456516 = 273\nANSWER: 273",
+      "bad_output": "997 × 123828 = 123456516, so the remainder is small.\nANSWER: 55"
     },
     {
       "id": "sequence-fibonacci-10th",
@@ -21,7 +22,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*55"
+        "pattern": "ANSWER:\\s*55",
+        "case_sensitive": false
       },
       "good_output": "1, 1, 2, 3, 5, 8, 13, 21, 34, 55.\nANSWER: 55",
       "bad_output": "1, 1, 2, 3, 5, 8, 13, 21, 34, 89.\nANSWER: 89"
@@ -34,7 +36,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*1"
+        "pattern": "ANSWER:\\s*1",
+        "case_sensitive": false
       },
       "good_output": "The grid is:\n1 2 3\n3 1 2\n2 3 1\nThe bottom-right cell is 1.\nANSWER: 1",
       "bad_output": "The bottom-right cell must be 2 to complete the row.\nANSWER: 2"
@@ -47,7 +50,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*16\\.09"
+        "pattern": "ANSWER:\\s*16\\.09",
+        "case_sensitive": false
       },
       "good_output": "10 * 1.609344 = 16.09344.\nRounded to two decimals: 16.09.\nANSWER: 16.09",
       "bad_output": "10 * 1.6 = 16.00.\nANSWER: 16.00"
@@ -60,7 +64,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*45"
+        "pattern": "ANSWER:\\s*45",
+        "case_sensitive": false
       },
       "good_output": "Number of handshakes is C(10, 2) = 10*9/2 = 45.\nANSWER: 45",
       "bad_output": "Each of 10 people shakes 9 hands, so 10*9 = 90.\nANSWER: 90"
@@ -73,7 +78,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*59"
+        "pattern": "ANSWER:\\s*59",
+        "case_sensitive": false
       },
       "good_output": "January has 31 days. February 2023 has 28 days. Total = 31 + 28 = 59 days.\nANSWER: 59",
       "bad_output": "January has 31 days. February has 29 days (leap year). Total = 60 days.\nANSWER: 60"
@@ -86,7 +92,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*3/8"
+        "pattern": "ANSWER:\\s*3/8",
+        "case_sensitive": false
       },
       "good_output": "Possible outcomes: 8. Favorable (HHT, HTH, THH): 3. Probability: 3/8.\nANSWER: 3/8",
       "bad_output": "Probability of heads is 1/2, so for 2 heads it is (1/2)^2 = 1/4.\nANSWER: 1/4"
@@ -99,7 +106,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*knave"
+        "pattern": "ANSWER:\\s*knave",
+        "case_sensitive": false
       },
       "good_output": "If A were a knight, the statement 'We are both knaves' would be true, implying A is a knave, a contradiction. Thus A is a knave.\nANSWER: knave",
       "bad_output": "If A is a knight, the statement is true, so they are both knaves, which is impossible. But if A is a knave, the statement is false, meaning at least one is a knight. This fits.\nANSWER: knight"
@@ -112,7 +120,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*6(?:\\.0+)?\\s*$"
+        "pattern": "ANSWER:\\s*6(?:\\.0+)?\\s*$",
+        "case_sensitive": false
       },
       "good_output": "Geometric mean is sqrt(4 * 9) = sqrt(36) = 6.\nANSWER: 6",
       "bad_output": "Arithmetic mean is (4+9)/2 = 6.5.\nANSWER: 6.5"

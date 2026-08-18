@@ -2,6 +2,32 @@
 
 All notable changes to effbench, newest first.
 
+## 0.9.0 — 2026-08-19
+
+The report reads like English now; the cloud panel explains itself.
+
+- Cloud setup is guided: per-provider help ("which one should I pick?"),
+  field-by-field hints (the key field wants the env var NAME, not the key),
+  and a Test Connection button that fires one tiny request and shows ✓/✗.
+- Plain-English speed names: BEST BURST / TYPING SPEED / REPLY SPEED /
+  EFFECTIVE SPEED. One definition of peak everywhere (the 172-vs-204
+  contradiction is gone).
+- Grade scale recalibrated: A ≥93, B+ ≥87, B ≥80. A strong local quant
+  with a couple of slips now reads as excellent, not mediocre.
+- Failures are actionable: the verdict splits format-only misses (right
+  answer, wrong casing — a system prompt fixes those) from real misses,
+  and says what to do about each.
+- Speed-vs-typical compares typing speed to typing-speed bands (was:
+  reply speed vs typing bands — it told fast rigs they were slow).
+  Band references are external community figures only; the private
+  soak reference is gone.
+- New chat task in the quick suite — "reply like a person" — so the
+  chat rung is graded, not marked untested. Case-insensitive matching
+  on all 17 ANSWER-extraction graders (casing was never the skill).
+- Reports carry a metadata strip (model, local/cloud, date, suite, runs)
+  and can be renamed in the UI; the original tag is always kept.
+- The headline verdict is a proper callout now, not small print.
+
 ## 0.8.1 — 2026-08-18
 
 Security hardening and provider coverage.

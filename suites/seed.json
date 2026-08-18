@@ -8,7 +8,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*15\\b"
+        "pattern": "ANSWER:\\s*15\\b",
+        "case_sensitive": false
       },
       "good_output": "The sentence contains 15 words.\nANSWER: 15",
       "bad_output": "The sentence contains 16 words.\nANSWER: 16"
@@ -21,22 +22,24 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*157\\b"
+        "pattern": "ANSWER:\\s*157\\b",
+        "case_sensitive": false
       },
-      "good_output": "240 \u00d7 0.75 = 180. 180 \u00d7 0.90 = 162. 162 \u2212 5 = 157.\nANSWER: 157",
-      "bad_output": "240 \u00d7 0.75 = 180. 180 \u2212 10 = 170.\nANSWER: 170"
+      "good_output": "240 × 0.75 = 180. 180 × 0.90 = 162. 162 − 5 = 157.\nANSWER: 157",
+      "bad_output": "240 × 0.75 = 180. 180 − 10 = 170.\nANSWER: 170"
     },
     {
       "id": "logic-three-boxes",
       "category": "reasoning",
-      "prompt": "Three boxes contain apples, bananas, and cherries \u2014 one fruit per box, no box empty, all different. Box labels are ALL wrong. You may pick one fruit from one box of your choice. Which box must you pick from to determine all contents? Explain briefly, then end with exactly: ANSWER: <the label you pick from>",
+      "prompt": "Three boxes contain apples, bananas, and cherries — one fruit per box, no box empty, all different. Box labels are ALL wrong. You may pick one fruit from one box of your choice. Which box must you pick from to determine all contents? Explain briefly, then end with exactly: ANSWER: <the label you pick from>",
       "max_tokens": 1200,
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*(the\\s+)?(box\\s+labelled|label(led)?\\s+)?apples"
+        "pattern": "ANSWER:\\s*(the\\s+)?(box\\s+labelled|label(led)?\\s+)?apples",
+        "case_sensitive": false
       },
-      "good_output": "Pick from the box labelled 'apples' \u2014 since the label is wrong, it holds bananas or cherries, which identifies it uniquely and the rest follow.\nANSWER: apples",
+      "good_output": "Pick from the box labelled 'apples' — since the label is wrong, it holds bananas or cherries, which identifies it uniquely and the rest follow.\nANSWER: apples",
       "bad_output": "Pick from the box labelled 'bananas'.\nANSWER: bananas"
     },
     {
@@ -47,7 +50,8 @@
       "temperature": 0.0,
       "grader": {
         "type": "regex",
-        "pattern": "ANSWER:\\s*28,\\s*210\\b"
+        "pattern": "ANSWER:\\s*28,\\s*210\\b",
+        "case_sensitive": false
       },
       "good_output": "Triangular numbers: differences grow by 1. Next is 28. The 20th triangular number is 210.\nANSWER: 28, 210",
       "bad_output": "Differences alternate. Next is 27.\nANSWER: 27, 190"

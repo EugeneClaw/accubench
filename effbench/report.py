@@ -102,8 +102,9 @@ def _purpose_ladder(by_purpose, width=520):
         )
     if untested:
         parts.append(
-            f'<div class="ladder-miss">not tested in this suite — '
-            f'{_escape(" · ".join(untested))}</div>'
+            f'<div class="ladder-miss">not asked in this suite — '
+            f'{_escape(" · ".join(untested))} — every model can attempt these; '
+            f'this run just didn\'t include them</div>'
         )
     parts.append("</div>")
     return "".join(parts)
@@ -114,7 +115,9 @@ def _hero_cluster(agg, suite):
     etps = agg.get("eff_tps") or 0
     rtps = agg.get("raw_tps") or 0
     gen = agg.get("gen_tps_median") or 0
-    peak = agg.get("peak_tps") or 0
+    # ONE definition of peak everywhere: generation-only best task
+    # (tweet-comparable). Never mix with wall-based peaks.
+    peak = agg.get("gen_tps_peak") or agg.get("peak_tps") or 0
     p10, p90 = agg.get("p10_tps"), agg.get("p90_tps")
     n = agg.get("n", 0)
     npass = agg.get("n_pass", 0)
@@ -133,19 +136,19 @@ def _hero_cluster(agg, suite):
             f'<span class="mb-val">{text}</span></div>'
         )
 
-    bars = mb("wall", rtps, DARK["ink_dim"], f"{rtps:.0f}")
+    bars = mb("reply speed", rtps, DARK["ink_dim"], f"{rtps:.0f}")
     if gen:
-        bars += mb("gen", gen, DARK["accent"], f"{gen:.0f}")
+        bars += mb("typing speed", gen, DARK["accent"], f"{gen:.0f}")
     if peak:
-        bars += mb("peak", peak, DARK["ink3"], f"{peak:.0f}")
+        bars += mb("best burst", peak, DARK["ink3"], f"{peak:.0f}")
 
-    sub_bits = [f"wall {rtps:.1f}"]
+    sub_bits = [f"reply {rtps:.1f}"]
     if gen:
-        sub_bits.append(f'gen-only <b>{gen:.1f}</b>')
+        sub_bits.append(f'typing <b>{gen:.1f}</b>')
     if peak:
-        sub_bits.append(f"peak {peak:.1f}")
+        sub_bits.append(f"burst {peak:.1f}")
     if p10 is not None and p90 is not None:
-        sub_bits.append(f"p10–p90 {p10:.0f}–{p90:.0f}")
+        sub_bits.append(f"middle 80% of tasks {p10:.0f}–{p90:.0f}")
     sub = ('<span class="sep">·</span>').join(sub_bits)
 
     # pass-rate arc: 240° gauge
@@ -206,6 +209,67 @@ def _equation_chip(rtps, pr, etps):
     )
 
 
+def _failure_guidance_block(recs):
+    """Visible, plain-English breakdown of failures + what to do."""
+    fmt, real, _named = _failure_breakdown(recs)
+    fails = len(fmt) + len(real)
+    if not fails:
+        return ""
+    guidance = _fix_guidance(fmt, real)
+    return f'<div class="fix-guidance">{guidance.strip()}</div>'
+
+
+def _failure_breakdown(recs):
+    """Split failed tasks into format-only near-misses vs real misses.
+
+    A near-miss = the grader's expectation matches the output when case and
+    whitespace are normalised — the model knew the answer, phrasing slipped.
+    Returns (format_only, real, [(task, which)]).
+    """
+    from .verify import near_miss
+    from .tasks import grader_for
+    format_only, real, named = [], [], []
+    for r in recs:
+        if r.get("pass") or r.get("error"):
+            continue
+        g = grader_for(r.get("task", ""))
+        if g is None:
+            real.append(r)
+            continue
+        if near_miss(g, r.get("content") or ""):
+            format_only.append(r)
+            named.append((r.get("task", "?"), "format"))
+        else:
+            real.append(r)
+            named.append((r.get("task", "?"), "logic"))
+    return format_only, real, named
+
+
+def _fix_guidance(format_only, real):
+    """One actionable line: what to DO about the failures."""
+    bits = []
+    if format_only and not real:
+        bits.append(
+            f" All {len(format_only)} failed tasks were <b>format-only</b> — right "
+            f"answer, wrong casing or wording. A one-line system prompt "
+            f"(e.g. \"answer in the exact format asked, lowercase where the "
+            f"task shows lowercase\") usually clears them."
+        )
+    elif format_only:
+        bits.append(
+            f" {len(format_only)} of the failures were <b>format-only</b> (right answer, "
+            f"wrong casing/wording — a stricter system prompt fixes those); "
+            f"{len(real)} were real misses worth looking at."
+        )
+    elif real:
+        bits.append(
+            f" The {len(real)} failures were real misses, not formatting — "
+            f"check the failed-task list for patterns (same category = a "
+            f"capability gap, scattered = try a stronger quant)."
+        )
+    return "".join(bits)
+
+
 def _score_verdict(agg, fit_band, fit_class):
     """The two sentences a non-technical user actually needs:
 
@@ -252,7 +316,6 @@ def _score_verdict(agg, fit_band, fit_class):
     else:
         acc_s = (f"<b>Accuracy needs work.</b> Only {npass} of {n} tasks passed "
                  f"({pr*100:.0f}%). Speed numbers at this accuracy flatter the setup.")
-
     # --- grade badge (accuracy, at a glance)
     from .grade import grade_run
     g = grade_run(npass, n)
@@ -284,28 +347,28 @@ def _named_metrics(agg):
     rows = []
     if peak:
         rows.append((
-            "PEAK SPEED",
+            "BEST BURST",
             f"{peak:.0f}",
-            "generation-only · best single task · the number in viral posts",
+            "typing-only · best single task · the number in viral posts",
             bar(peak), "peak",
         ))
     if mean_gen:
         rows.append((
-            "MEAN SPEED",
+            "TYPING SPEED",
             f"{mean_gen:.0f}",
-            "generation-only · typical task · comparable to others' claims",
+            "typing-only · typical task · comparable to others' claims",
             bar(mean_gen), "mean",
         ))
     rows.append((
-        "WALL SPEED",
+        "REPLY SPEED",
         f"{rtps:.0f}",
-        "end-to-end incl. prompt processing · the speed you feel",
+        "end-to-end: reads your prompt, then types · how fast replies actually arrive",
         bar(rtps), "wall",
     ))
     rows.append((
         "EFFECTIVE SPEED",
         f"{etps:.0f}",
-        "wall × pass rate · what you'd actually keep",
+        "reply speed × pass rate · what you'd actually keep",
         bar(etps), "eff",
     ))
 
@@ -324,8 +387,8 @@ def _named_metrics(agg):
         f'<div class="nm-title">Your speeds, named</div>'
         f'{html_rows}'
         f'<div class="nm-foot">all measured this run · one scale · '
-        f'peak & mean are generation-only (what speed posts quote); '
-        f'wall and effective include prompt processing</div>'
+        f'typing & burst exclude prompt processing (what speed posts quote); '
+        f'reply and effective include it</div>'
         f'</div>'
     )
 
@@ -351,21 +414,22 @@ def _brag_line(rtps, pr, etps, gen, peak):
     bits = [tone]
     if gen and gen > rtps * 1.3:
         bits.append(
-            f"Generation-only throughput is {gen:.0f} tok/s — the number other "
+            f" Generation-only throughput is {gen:.0f} tok/s — the number other "
             f"tools headline. We keep it, but we don't lead with it, because it "
             f"pretends wrong answers are free."
         )
-    return f'<div class="brag">{"".join(bits)}</div>'
+    if len(bits) == 1:
+        return f'<div class="brag brag-hero">{bits[0]}</div>'
+    return f'<div class="brag brag-hero">{"".join(bits)}</div>'
 
 
 def _band_chart(agg, band, klass, suite, width=520, height=140):
-    """Your median vs the typical band, with the band's source shown.
+    """Your TYPING SPEED vs the typical band, with the band's basis shown.
 
-    Shows the band as a shaded region with lo/hi labels, your median as a
-    marker, and mean/p10/p90 as a jitter strip below. The band source is
-    printed verbatim so nobody mistakes n=1 for a crowd.
+    The band and the marker are both generation-only (what the community
+    posts). Comparing wall to a gen-only band was a scale bug — fixed.
     """
-    obs = agg.get("raw_tps") or 0
+    obs = agg.get("gen_tps_median") or agg.get("raw_tps") or 0
     lo, hi, src = band if band else (None, None, "")
     lo = lo or 0
     hi = max(hi or 0, obs * 1.25, 1)
@@ -578,6 +642,22 @@ def _css():
     .brag {{ margin-top: 14px; font-size: 13.5px; line-height: 1.55; color: {DARK['ink_dim']};
             max-width: 620px; }}
     .brag b {{ color: {DARK['ink']}; }}
+    .brag-hero {{ font-size: 16.5px; color: {DARK['ink']}; border: 1px solid {DARK['hairline']};
+                 border-left: 3px solid {DARK['accent']}; background: {DARK['panel']};
+                 padding: 14px 18px; border-radius: 8px; max-width: 680px; }}
+    .brag-hero b {{ color: {DARK['accent']}; }}
+    .fix-guidance {{ margin-top: 10px; font-size: 14px; line-height: 1.55; color: {DARK['ink']};
+                    background: {DARK['panel']}; border: 1px solid {DARK['hairline']};
+                    border-left: 3px solid {DARK['warn']}; padding: 12px 16px;
+                    border-radius: 8px; max-width: 680px; }}
+    .fix-guidance b {{ color: {DARK['warn']}; }}
+    .meta-strip {{ display: flex; flex-wrap: wrap; gap: 10px 22px; margin: 10px 0 4px;
+                  padding: 10px 14px; background: {DARK['panel']};
+                  border: 1px solid {DARK['hairline']}; border-radius: 8px; }}
+    .meta-cell .meta-k {{ font-family: {DARK['mono']}; font-size: 9px;
+                         text-transform: uppercase; letter-spacing: 0.12em;
+                         color: {DARK['ink3']}; margin-bottom: 2px; }}
+    .meta-cell .meta-v {{ font-size: 13px; color: {DARK['ink']}; }}
     .ladder-head {{ display: flex; justify-content: space-between; font-family: {DARK['mono']};
                    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
                    color: {DARK['ink3']}; margin-bottom: 14px; }}
@@ -639,6 +719,7 @@ def _css():
                               align-items: center; justify-content: center;
                               border-radius: 8px; background: rgba(255,255,255,0.04); }}
     .grade-badge.tone-pass .g-letter {{ color: {DARK['good']}; border: 1px solid {DARK['good']}; }}
+    .grade-badge.tone-good .g-letter {{ color: {DARK['good']}; border: 1px solid {DARK['good']}; }}
     .grade-badge.tone-warn .g-letter {{ color: {DARK['warn']}; border: 1px solid {DARK['warn']}; }}
     .grade-badge.tone-fail .g-letter {{ color: {DARK['bad']}; border: 1px solid {DARK['bad']}; }}
     .grade-badge.tone-ink_dim .g-letter {{ color: {DARK['ink_dim']}; border: 1px solid {DARK['ink_dim']}; }}
@@ -694,6 +775,37 @@ def _html_doc(title, content):
 
 # ---------- RUN VIEW (one recipe) ----------
 
+def _meta_strip(props, recs, suite, runs):
+    """Model · quant · hardware · local/cloud · date · suite · runs — the
+    fingerprint that makes a copied report identifiable years later."""
+    bits = []
+    if props:
+        mp = os.path.basename(props.get("model_path") or "") or props.get("model") or "?"
+        if props.get("cloud"):
+            prov = props.get("cloud") if isinstance(props.get("cloud"), str) else "cloud"
+            bits.append(("model", f"{mp} via {prov} (cloud)"))
+        else:
+            bits.append(("model", mp))
+    ts = recs[0].get("ts") if recs else None
+    if ts:
+        from datetime import datetime as _dt
+        bits.append(("date", _dt.fromtimestamp(float(ts)).strftime("%Y-%m-%d %H:%M")))
+    if suite:
+        bits.append(("suite", suite))
+    if runs:
+        bits.append(("runs per task", str(runs)))
+    if props and not props.get("cloud"):
+        bi = props.get("build_info")
+        if isinstance(bi, str) and bi:
+            bits.append(("server", bi[:60]))
+    cells = "".join(
+        f'<div class="meta-cell"><div class="meta-k">{_escape(k)}</div>'
+        f'<div class="meta-v">{_escape(v)}</div></div>'
+        for k, v in bits
+    )
+    return f'<div class="meta-strip">{cells}</div>' if cells else ""
+
+
 def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
                     hw_class=None, title=None, suite=None):
     agg = aggregate(recs)
@@ -701,6 +813,8 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
     pr = agg.get("pass_rate", 0)
     rtps = agg.get("raw_tps", 0)
     etps = agg.get("eff_tps", 0)
+    # the number the band compares against — generation-only, like the band
+    gen_disp = agg.get("gen_tps_median") or rtps
     title = title or f"effbench · {tag}"
     by_purpose = agg.get("by_purpose", {})
     suite = suite or suite_of(recs)
@@ -715,33 +829,21 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
             verdict_html = (
                 f'<div class="verdict good"><b>Faster than typical</b> for '
                 f'{_escape(hw_class or "this hardware")} '
-                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).{scale_note}</div>'
+                f'(typical typing speed {lo}–{hi} tok/s, yours {gen_disp:.1f}).{scale_note}</div>'
             )
         elif fit_class == "in":
             verdict_html = (
                 f'<div class="verdict good"><b>Typical</b> for '
                 f'{_escape(hw_class or "this hardware")} '
-                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).{scale_note}</div>'
+                f'(typical typing speed {lo}–{hi} tok/s, yours {gen_disp:.1f}).{scale_note}</div>'
             )
         elif fit_class == "below":
-            gen = agg.get("gen_tps_median")
-            if gen and gen >= lo:
-                cache_note = (
-                    f" But generation-only speed is {gen:.1f} tok/s — inside "
-                    f"the typical band. Your server isn't slow; wall-clock is "
-                    f"dragged by prompt processing, which is normal on a "
-                    f"first/cold run or short tasks."
-                )
-            else:
-                cache_note = (
-                    " Common causes: background load, slow KV cache quant, "
-                    "reasoning model with thinking enabled, no speculative decoding."
-                )
             verdict_html = (
                 f'<div class="verdict warn"><b>Slower than typical</b> for '
                 f'{_escape(hw_class or "this hardware")} '
-                f'(typical {lo}–{hi} tok/s, yours {rtps:.1f}).{scale_note}'
-                f'{cache_note}</div>'
+                f'(typical typing speed {lo}–{hi} tok/s, yours {gen_disp:.1f}).{scale_note}'
+                f' Common causes: background load, slow KV cache quant, '
+                f'reasoning model with thinking enabled, no speculative decoding.</div>'
             )
         else:
             verdict_html = (
@@ -749,9 +851,9 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
                 f'{_escape(hw_class or "hardware")} + model combo.</div>'
             )
         if src:
-            shown = ((f'band source — {src[len("measured: "):]}' if src.startswith("measured: ")
-                      else f"band source — {src}"))
-            src_note = f'<div class="hint">{_escape(shown)} · one rig\'s soak, not a crowd\'s average</div>'
+            shown = ((f'band basis — {src[len("measured: "):]}' if src.startswith("measured: ")
+                      else f"band basis — {src}"))
+            src_note = f'<div class="hint">{_escape(shown)} · external community figures, not our measurements</div>'
     else:
         verdict_html = (
             '<div class="verdict dim">Could not detect hardware/model for '
@@ -793,9 +895,12 @@ def render_run_view(tag, recs, props=None, fit_band=None, fit_class="unknown",
     body = f"""
     <div class="eyebrow">effbench · {suite} suite · {n} task-runs</div>
     <h1>{_escape(title)}</h1>
-    <p class="sub">pass rate {pr*100:.1f}% ({agg.get('n_pass', 0)} of {n}) · pass rate {pr*100:.1f}% · generated by effbench</p>
+    {_meta_strip(props, recs, suite, runs=(max([r.get("run_idx", 0) or 0 for r in recs], default=0) + 1))}
+    <p class="sub">pass rate {pr*100:.1f}% ({agg.get('n_pass', 0)} of {n}) · generated by effbench</p>
 
     {_score_verdict(agg, fit_band, fit_class)}
+
+    {_failure_guidance_block(recs)}
 
     {_hero_cluster(agg, suite)}
 

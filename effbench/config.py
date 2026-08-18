@@ -22,6 +22,9 @@ DEFAULTS = {
     "out": "effbench-report.html",
     # Open the report in the browser after rendering.
     "open": False,
+    # Optional cloud endpoint: {provider, url, model, key_env, name}.
+    # The API key itself is NEVER stored — only the env var NAME.
+    "cloud": None,
 }
 
 

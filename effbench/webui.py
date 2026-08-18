@@ -12,12 +12,13 @@ import json
 import os
 import threading
 import time
+from datetime import datetime
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
 from . import __version__, config, wizard
-from .client import ServerClient
+from .client import ServerClient, make_client
 from .ledger import append_record, load_ledger, aggregate, suite_of
 from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
@@ -59,7 +60,7 @@ def _detect_server():
     for url in candidates:
         tried.append(url)
         try:
-            props = ServerClient(url).props()
+            props = make_client(url).props()
             if config.get("url") != url:
                 config.set_value("url", url)
             return url, props, tried
@@ -77,16 +78,34 @@ def _worker(which):
 
         _set(phase="detecting", error=None, rows=[], summary=None,
              tasks_done=0, tasks_total=0, current_task="", which=which)
-        url, props, _ = _detect_server()
-        if not url:
-            _set(phase="error", error="No AI server found. Set the server URL in Settings "
-                                       "(e.g. http://localhost:11434) and make sure it's running.")
-            return
+        cloud = config.get("cloud") or None
+        if cloud and cloud.get("url") and cloud.get("model"):
+            # cloud run: no local server needed
+            from .cloud import CloudClient
+            client = CloudClient(cloud["url"], cloud["model"],
+                                 cloud.get("key_env", ""), cloud.get("name", cloud.get("provider", "cloud")))
+            try:
+                props = client.props()
+            except Exception as e:
+                _set(phase="error", error=f"Cloud endpoint failed: {e}")
+                return
+            url = cloud["url"]
+        else:
+            url, props, _ = _detect_server()
+            if not url:
+                _set(phase="error", error="No AI server found. Set the server URL in Settings "
+                                          "(e.g. http://localhost:11434) and make sure it's running.")
+                return
+            client = make_client(url)
 
         suite = _suite_path(which)
         tasks = load_suite(suite)
         runs = 1 if which == "quick" else max(1, int(config.get("runs") or 1))
-        tag = wizard._autotag(props)
+        if cloud and cloud.get("url") and cloud.get("model"):
+            cname = cloud.get("name") or cloud.get("provider") or "cloud"
+            tag = f"{cname}-{cloud['model']}-cloud-{datetime.now().strftime('%Y%m%d-%H%M%S')}".replace("/", "-").replace(" ", "-")
+        else:
+            tag = wizard._autotag(props)
         os.makedirs(REPORTS_DIR, exist_ok=True)
         out = os.path.join(REPORTS_DIR, f"{tag}.html")
 
@@ -94,7 +113,6 @@ def _worker(which):
              model=os.path.basename(props.get("model_path", "?")),
              url=url)
 
-        client = ServerClient(url)
         server = {
             "build": props.get("build", "?"),
             "total_slots": props.get("total_slots", "?"),
@@ -123,9 +141,12 @@ def _worker(which):
         bag = [r for r in load_ledger(LEDGER) if r.get("tag") == tag]
         agg = aggregate(bag)
         suite = suite_of(bag)
+        from .grade import grade_run
+        grade = grade_run(agg.get("n_pass", 0), agg.get("n", 0))
         rtps = agg.get("raw_tps") or 0
         summary = {
             "tag": tag,
+            "grade": grade,
             "report": f"/report/{os.path.basename(out)}",
             "suite": suite,
             "raw_tps": round(rtps, 1),
@@ -176,7 +197,7 @@ def _make_compare(tag_a, tag_b):
     try:
         url = config.get("url")
         if url:
-            props = ServerClient(url).props()
+            props = make_client(url).props()
     except Exception:
         props = None
     model_path = (props or {}).get("model_path", "")
@@ -253,6 +274,7 @@ class Handler(BaseHTTPRequestHandler):
             snap["version"] = __version__
             snap["config"] = {
                 "url": config.get("url"),
+                "cloud": config.get("cloud"),
                 "runs": config.get("runs"),
                 "open": config.get("open") is not False,
             }
@@ -312,7 +334,7 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/config":
             body = self._body()
             for k, v in body.items():
-                if k in ("url", "runs", "open"):
+                if k in ("url", "runs", "open", "cloud"):
                     config.set_value(k, v)
             self._json({"ok": True, "config": config.load()})
 

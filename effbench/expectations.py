@@ -172,6 +172,10 @@ def fit_for(recs, props):
     # (a 5090 cold quick run reads ~66 wall — mid-class — but ~141 gen, which
     # is correctly high-class and matches warm wall on the same rig).
     infer_from = agg.get("gen_tps_median") or observed
+    # Cloud endpoints have no hardware class — no local GPU sits behind them.
+    # Bands would be nonsense ("typical for a phone"), so skip fit entirely.
+    if (props or {}).get("cloud"):
+        return None, None, "unknown", suite
     hwc = detect_hw_class(props or {}, observed_raw_tps=infer_from if infer_from else None)
     band = None
     if props:

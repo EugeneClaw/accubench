@@ -19,7 +19,7 @@ import time
 import uuid
 
 from . import __version__
-from .client import ServerClient
+from .client import ServerClient, make_client
 from .tasks import load_suite
 from .verify import grade
 from .ledger import append_record, load_ledger, aggregate, compare
@@ -34,7 +34,7 @@ from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
 def cmd_run(args):
     tasks = load_suite(args.suite)
     print(f"loaded {len(tasks)} tasks from {args.suite}")
-    client = ServerClient(args.url)
+    client = make_client(args.url)
     try:
         info = client.props()
     except Exception as e:
@@ -167,12 +167,11 @@ def cmd_report(args):
     if not tags:
         print("no records in ledger")
         return 1
-    # we want the props from the first record's tag
-    # for simplicity: ask server is optional
+    name = getattr(args, "name", None) or tags[0]
     props = None
     if hasattr(args, "url") and args.url:
         try:
-            props = ServerClient(args.url).props()
+            props = make_client(args.url).props()
         except Exception:
             props = None
 
@@ -181,7 +180,7 @@ def cmd_report(args):
         bag = [r for r in recs if r["tag"] == tag]
         # Suite-aware fit: quick-suite bands get the ×0.89 scale
         hwc, band, klass, _suite = fit_for(bag, props or {})
-        html_doc = render_report([(tag, bag, band, klass, hwc)], props=props)
+        html_doc = render_report([(tag, bag, band, klass, hwc)], props=props, title=name)
     else:
         # multi: compare the first two
         a, b = tags[0], tags[1]
@@ -210,7 +209,7 @@ def cmd_compare(args):
     props = None
     if hasattr(args, "url") and args.url:
         try:
-            props = ServerClient(args.url).props()
+            props = make_client(args.url).props()
         except Exception:
             props = None
     obs_tps = (aggregate(recs_a).get("raw_tps", 0) + aggregate(recs_b).get("raw_tps", 0)) / 2
@@ -240,7 +239,7 @@ def cmd_share(args):
     props = None
     if hasattr(args, "url") and args.url:
         try:
-            props = ServerClient(args.url).props()
+            props = make_client(args.url).props()
         except Exception:
             props = None
     model_path = (props or {}).get("model_path", "")
@@ -346,7 +345,7 @@ def cmd_setup(args):
     found = None
     for url in candidates:
         try:
-            client = ServerClient(url)
+            client = make_client(url)
             # health first — cheap and tells us the server is actually up
             health = client.health()
             if health.get("status") != "ok":
@@ -430,6 +429,7 @@ def build_parser():
     pr.add_argument("--suite", required=True)
     pr.add_argument("--ledger", default="results.jsonl")
     pr.add_argument("--tag", default="run")
+    pr.add_argument("--name", help="human name for the report (default: tag)")
     pr.add_argument("--runs", type=int, default=1)
     pr.add_argument("--think", action="store_true",
                     help="leave model thinking enabled (default: disable via "

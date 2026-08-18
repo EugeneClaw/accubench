@@ -253,7 +253,16 @@ def _score_verdict(agg, fit_band, fit_class):
         acc_s = (f"<b>Accuracy needs work.</b> Only {npass} of {n} tasks passed "
                  f"({pr*100:.0f}%). Speed numbers at this accuracy flatter the setup.")
 
-    return f'<div class="score-verdict">{speed}<br>{acc_s}</div>'
+    # --- grade badge (accuracy, at a glance)
+    from .grade import grade_run
+    g = grade_run(npass, n)
+    badge = (f'<div class="grade-badge tone-{g["tone"]}">'
+             f'<span class="g-letter">{g["letter"]}</span>'
+             f'<span class="g-meta"><b>Grade {g["letter"]}</b> · {g["label"]}'
+             + (f' · {g["pct"]:.0f}%' if g["pct"] is not None else '')
+             + '</span></div>')
+
+    return f'<div class="score-verdict">{badge}{speed}<br>{acc_s}</div>'
 
 
 def _named_metrics(agg):
@@ -624,6 +633,16 @@ def _css():
                      padding: 14px 18px; font-size: 14px; line-height: 1.65;
                      color: {DARK["ink_dim"]}; margin: 18px 0 0 0; }}
     .score-verdict b {{ color: {DARK['ink']}; }}
+    .grade-badge {{ display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }}
+    .grade-badge .g-letter {{ font-size: 30px; font-weight: 700; line-height: 1;
+                              width: 46px; height: 46px; display: inline-flex;
+                              align-items: center; justify-content: center;
+                              border-radius: 8px; background: rgba(255,255,255,0.04); }}
+    .grade-badge.tone-pass .g-letter {{ color: {DARK['good']}; border: 1px solid {DARK['good']}; }}
+    .grade-badge.tone-warn .g-letter {{ color: {DARK['warn']}; border: 1px solid {DARK['warn']}; }}
+    .grade-badge.tone-fail .g-letter {{ color: {DARK['bad']}; border: 1px solid {DARK['bad']}; }}
+    .grade-badge.tone-ink_dim .g-letter {{ color: {DARK['ink_dim']}; border: 1px solid {DARK['ink_dim']}; }}
+    .grade-badge .g-meta {{ font-size: 14px; color: {DARK['ink_dim']}; }}
 
     /* named metrics — PEAK / MEAN / WALL / EFFECTIVE */
     .nm-block {{ margin-top: 18px; border: 1px solid {DARK['hairline']};

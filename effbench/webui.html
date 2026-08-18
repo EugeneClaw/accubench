@@ -96,6 +96,17 @@
   .lrun { font-family:var(--mono); font-size:10px; color:var(--ink3); text-align:right; }
 
   /* summary — the verdict screen */
+  .grade-pill { display:flex; align-items:center; gap:12px; margin:10px 0 2px; }
+  .grade-pill .gp-letter { font-size:28px; font-weight:700; line-height:1;
+                           width:42px; height:42px; display:inline-flex; align-items:center;
+                           justify-content:center; border-radius:8px;
+                           background:rgba(255,255,255,0.04); }
+  .grade-pill.tone-pass .gp-letter { color:var(--pass); border:1px solid var(--pass); }
+  .grade-pill.tone-warn .gp-letter { color:var(--warn); border:1px solid var(--warn); }
+  .grade-pill.tone-fail .gp-letter { color:var(--fail); border:1px solid var(--fail); }
+  .grade-pill.tone-ink_dim .gp-letter { color:var(--ink2); border:1px solid var(--ink2); }
+  .grade-pill .gp-meta { font-family:var(--mono); font-size:11.5px; color:var(--ink2); }
+  .grade-pill .gp-meta b { color:var(--ink); }
   .verdict-line { font-family:var(--mono); font-size:13px; text-transform:uppercase;
                   letter-spacing:0.16em; color:var(--mint); margin-top:2px; }
   .verdict-sub { font-family:var(--mono); font-size:11.5px; color:var(--ink2); margin-top:6px; }
@@ -269,6 +280,7 @@
     </div>
 
     <div id="summary" style="display:none">
+      <div class="grade-pill" id="s-grade" style="display:none"></div>
       <div class="verdict-line" id="s-verdict">—</div>
       <div class="verdict-sub" id="s-verdict-sub"></div>
       <div class="hero-num">
@@ -340,6 +352,19 @@
       <label>AI server URL</label>
       <input type="text" id="cfg-url" placeholder="http://localhost:11434" style="width:340px;">
       <div class="hint">where your model server lives (llama.cpp, LM Studio, Ollama, vLLM…)</div>
+    </div>
+    <div class="field">
+      <label>cloud endpoint (optional)</label>
+      <select id="cfg-cloud" onchange="cloudSelChanged()">
+        <option value="">none — local server only</option>
+        <option value="zai">z.ai (GLM models) — key from GLM_API_KEY</option>
+        <option value="openrouter">OpenRouter — key from OPENROUTER_API_KEY</option>
+        <option value="custom">custom OpenAI-compatible…</option>
+      </select>
+      <input type="text" id="cfg-cloud-url" placeholder="custom base URL, e.g. https://provider.example/v4" style="width:340px; display:none;">
+      <input type="text" id="cfg-cloud-model" placeholder="model id, e.g. glm-5.3" style="width:340px; display:none;">
+      <input type="text" id="cfg-cloud-keyenv" placeholder="env var holding the API key, e.g. GLM_API_KEY" style="width:340px; display:none;">
+      <div class="hint">the API key itself is never stored — effbench reads it from the environment variable at run time. Cloud speeds include network latency and are labelled cloud.</div>
     </div>
     <div class="field">
       <label>runs per task (full benchmark)</label>
@@ -557,6 +582,16 @@ function renderVerdict(sm, fresh) {
       sub += ` Generation ${Math.round(gen)} tok/s is well under the typical band (${lo}+).`;
     }
   }
+  // grade badge — accuracy at a glance (A–F, U = not run)
+  const grade = sm.grade || null;
+  if (grade) {
+    const gb = document.getElementById('s-grade');
+    gb.className = 'grade-pill tone-' + grade.tone;
+    gb.innerHTML = `<span class="gp-letter">${grade.letter}</span>
+      <span class="gp-meta"><b>Grade ${grade.letter}</b> · ${grade.label}
+      ${grade.pct != null ? ' · ' + Math.round(grade.pct) + '%' : ''}</span>`;
+    gb.style.display = 'flex';
+  }
   document.getElementById('s-verdict').textContent = head;
   document.getElementById('s-verdict-sub').textContent = sub;
 
@@ -692,12 +727,36 @@ async function doCompare() {
   else alert(r.error || 'comparison failed');
 }
 
+const CLOUD_PRESETS = {
+  zai: {url: 'https://api.z.ai/api/coding/paas/v4', keyenv: 'GLM_API_KEY'},
+  openrouter: {url: 'https://openrouter.ai/api/v1', keyenv: 'OPENROUTER_API_KEY'},
+  custom: null
+};
+function cloudSelChanged() {
+  const v = document.getElementById('cfg-cloud').value;
+  const custom = v === 'custom', any = !!v;
+  for (const id of ['cfg-cloud-url', 'cfg-cloud-model', 'cfg-cloud-keyenv'])
+    document.getElementById(id).style.display = any ? 'block' : 'none';
+  document.getElementById('cfg-cloud-url').style.display = (any && custom) || (!any) ? 'none' : 'block';
+  if (!custom && any) {
+    document.getElementById('cfg-cloud-url').value = CLOUD_PRESETS[v].url;
+    document.getElementById('cfg-cloud-keyenv').value = CLOUD_PRESETS[v].keyenv;
+  }
+}
 async function loadConfig() {
   const s = await api('/api/state');
   document.getElementById('ver').textContent = 'v' + s.version;
   document.getElementById('cfg-url').value = s.config.url || '';
   document.getElementById('cfg-runs').value = String(s.config.runs || 1);
   document.getElementById('cfg-open').value = s.config.open ? 'on' : 'off';
+  const c = s.config.cloud || {};
+  if (c.provider) {
+    document.getElementById('cfg-cloud').value = c.provider;
+    document.getElementById('cfg-cloud-model').value = c.model || '';
+    document.getElementById('cfg-cloud-keyenv').value = c.key_env || '';
+    if (c.provider === 'custom') document.getElementById('cfg-cloud-url').value = c.url || '';
+    cloudSelChanged();
+  }
 }
 
 async function saveConfig() {
@@ -705,10 +764,22 @@ async function saveConfig() {
   if (url) {
     try { await api('/api/detect'); } catch (e) {}
   }
+  const pv = document.getElementById('cfg-cloud').value;
+  let cloud = null;
+  if (pv) {
+    cloud = {
+      provider: pv,
+      url: pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
+                           : CLOUD_PRESETS[pv].url,
+      model: document.getElementById('cfg-cloud-model').value.trim(),
+      key_env: document.getElementById('cfg-cloud-keyenv').value.trim()
+    };
+  }
   const r = await api('/api/config', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
       url: url || null,
+      cloud: cloud,
       runs: parseInt(document.getElementById('cfg-runs').value, 10),
       open: document.getElementById('cfg-open').value === 'on'
     })

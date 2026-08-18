@@ -2,6 +2,16 @@
 
 All notable changes to effbench, newest first.
 
+## 0.8.0 — 2026-08-18
+
+Three features: cloud endpoints, letter grades, named runs.
+
+- **Cloud endpoints** — Settings now accepts a cloud provider (z.ai, OpenRouter, or any OpenAI-compatible URL) plus a model id and the NAME of the environment variable holding the API key. The key itself is never stored by effbench and never appears in reports or the ledger. Cloud runs are labelled cloud; speeds include network latency and the generation figure is marked estimated. Hardware "typical band" comparison is skipped for cloud runs — a cloud endpoint has no local hardware class.
+- **Letter grades** — every run and report now carries a grade badge: A ≥95%, B ≥85%, C ≥70%, D ≥55%, E ≥40%, F below, U when nothing could run. Grades judge accuracy only; speed stays a separate verdict. The badge is coloured (green/amber/red) for at-a-glance reading.
+- **Named runs** — `effbench run --name` and the web UI produce report filenames that identify what was measured (e.g. zai-glm-5.3-cloud-20260818-125558.html) instead of opaque tags. The underlying tag and all ledger metadata are unchanged.
+
+Also fixed: cloud-quick reports crashed the band verdict (format on None); cloud runs no longer get a hardware class assigned from model-path heuristics.
+
 ## 0.7.1 — 2026-08-17
 
 Report and summary now answer "is this good?" directly.

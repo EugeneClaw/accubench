@@ -1,3 +1,7 @@
+## 0.9.13 — 2026-08-18
+
+Setup wizard: fixed save button stuck on ‘saving…’.
+
 ## 0.9.12 — 2026-08-18
 
 Leaderboard (best run per model), report delete, saved-key hint.

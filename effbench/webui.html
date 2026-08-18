@@ -514,8 +514,13 @@ let tickTimer = null;
 let lastRowsLen = 0;
 
 async function api(path, opts) {
-  const r = await fetch(path, opts);
-  return r.json();
+  // every call bounded — a stalled request must never hang the UI
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(new Error('request timed out')), 60000);
+  try {
+    const r = await fetch(path, Object.assign({ signal: ctl.signal }, opts || {}));
+    return await r.json();
+  } finally { clearTimeout(t); }
 }
 
 function setRunStatus(t, pulse=false) {
@@ -1072,8 +1077,9 @@ async function wizFinish() {
     await refreshTargetSummary();
     closeWiz();
   } catch (e) {
+    alert('Could not save: ' + (e && e.message ? e.message : e));
+  } finally {
     btn.disabled = false; btn.textContent = 'Save & finish';
-    alert('Could not save: ' + e.message);
   }
 }
 async function refreshTargetSummary() {
@@ -1141,9 +1147,6 @@ function collectCloudCfg() {
 }
 async function saveConfig() {
   const url = document.getElementById('cfg-url').value.trim();
-  if (url) {
-    try { await api('/api/detect'); } catch (e) {}
-  }
   const cloud = collectCloudCfg();
   let r;
   try {

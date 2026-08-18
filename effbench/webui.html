@@ -808,7 +808,10 @@ async function testCloudConn() {
   const out = document.getElementById('cloud-test-result');
   btn.disabled = true; out.textContent = 'testing…';
   try {
-    const r = await api('/api/cloud-test', 'POST', collectCloudCfg());
+    const r = await api('/api/cloud-test', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(collectCloudCfg())
+    });
     out.innerHTML = r.ok
       ? '<span style="color:var(--good,green)">✓ works — ' + (r.detail || 'connection ok') + '</span>'
       : '<span style="color:var(--bad,red)">✗ ' + (r.detail || 'failed') + '</span>';

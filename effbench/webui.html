@@ -404,6 +404,7 @@
       </select>
     </div>
     <button class="btn" onclick="saveConfig()">Save settings</button>
+    <button class="btn btn-ghost" onclick="resetConfig()" id="reset-btn">Reset to blank</button>
     <span id="cfg-msg" class="hint"></span>
   </div>
 
@@ -881,6 +882,28 @@ async function wipeAllKeys() {
     body: null});
   document.getElementById('cloud-key-status').textContent =
     'removed ' + (r.removed || 0) + ' key(s) from this machine';
+}
+
+// reset saved settings — confirm, then wipe config.json (+keys if asked)
+async function resetConfig() {
+  let keysStored = 0;
+  try { keysStored = ((await api('/api/keys')) || {}).idents?.length || 0; } catch (e) {}
+  let wipeKeys = false;
+  if (keysStored > 0) {
+    wipeKeys = confirm(`Found ${keysStored} saved API key${keysStored > 1 ? 's' : ''}.\n\nOK = also delete saved keys.\nCancel = keep keys, reset settings only.`);
+    if (wipeKeys === false && !confirm('Reset settings only (keep keys)?')) return;
+  } else {
+    if (!confirm('Clear all saved settings? Fields will start blank next time.')) return;
+  }
+  try {
+    const r = await api('/api/config-reset', {method: 'POST', body: JSON.stringify({keys: wipeKeys})});
+    if (r.ok) { location.reload(); return; }
+    throw new Error(r.error || 'reset failed');
+  } catch (e) {
+    const el = document.getElementById('cfg-msg');
+    el.textContent = '✗ ' + (e.message || 'reset failed');
+    setTimeout(() => el.textContent = '', 5000);
+  }
 }
 
 async function loadConfig() {

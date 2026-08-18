@@ -498,6 +498,20 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": True, "config": config.load(),
                         "key_saved": bool(pasted)})
 
+        elif u.path == "/api/config-reset":
+            body = self._body()
+            import os
+            removed = {"config": False, "keys": 0}
+            try:
+                if os.path.exists(config.PATH):
+                    os.remove(config.PATH)
+                    removed["config"] = True
+            except OSError:
+                pass
+            if body.get("keys"):
+                removed["keys"] = keystore.clear_all()
+            self._json({"ok": True, **removed})
+
         elif u.path == "/api/shutdown":
             self._json({"ok": True})
             threading.Thread(target=self.server.shutdown, daemon=True).start()

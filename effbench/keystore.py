@@ -80,3 +80,12 @@ def _flush(data):
         os.chmod(_KEYS_PATH, 0o600)
     except OSError:
         pass
+
+
+def clear_all():
+    """Remove every stored key. Returns how many were removed."""
+    data = _load()
+    n = len(data)
+    if n:
+        _flush({})
+    return n

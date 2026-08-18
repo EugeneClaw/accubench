@@ -247,6 +247,31 @@
   @media (prefers-reduced-motion: reduce) {
     * { animation:none !important; transition:none !important; }
   }
+
+/* ---- setup wizard modal ---- */
+.wiz-overlay { position:fixed; inset:0; background:rgba(4,8,12,.72); display:none;
+  align-items:center; justify-content:center; z-index:50; backdrop-filter:blur(3px); }
+.wiz-overlay.open { display:flex; }
+.wiz { width:min(560px, calc(100vw - 40px)); max-height:calc(100vh - 60px); overflow:auto;
+  background:var(--panel,#12161C); border:1px solid var(--hair,#232B35); border-radius:12px;
+  padding:26px 28px 22px; box-shadow:0 24px 80px rgba(0,0,0,.6); }
+.wiz-kicker { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink3,#9AA6B5); margin-bottom:6px; }
+.wiz-title { font-size:21px; font-weight:650; margin-bottom:4px; }
+.wiz-sub { font-size:13px; color:var(--ink2,#C4CDD8); margin-bottom:18px; }
+.wiz-choices { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:18px 0 6px; }
+.wiz-choice { border:1px solid var(--hair,#232B35); border-radius:10px; padding:18px 16px;
+  cursor:pointer; text-align:left; background:transparent; transition:border-color .15s, transform .15s; }
+.wiz-choice:hover { border-color:var(--accent,#7FE7B4); transform:translateY(-1px); }
+.wiz-choice .big { font-size:15px; font-weight:650; margin-bottom:6px; }
+.wiz-choice .small { font-size:12px; color:var(--ink3,#9AA6B5); line-height:1.45; }
+.wiz-nav { display:flex; gap:10px; align-items:center; margin-top:20px; }
+.wiz-stepnum { font-size:11px; color:var(--ink3,#9AA6B5); margin-right:auto; }
+.wiz-skip { font-size:12px; color:var(--ink3,#9AA6B5); cursor:pointer; text-decoration:underline; background:none; border:none; padding:0; }
+.wiz-skip:hover { color:var(--ink2,#C4CDD8); }
+.target-summary { display:flex; align-items:center; gap:10px; padding:10px 12px;
+  border:1px solid var(--hair,#232B35); border-radius:8px; margin-bottom:12px; }
+.target-summary .t { font-size:12px; color:var(--ink3,#9AA6B5); }
+.target-summary .v { font-size:13px; font-weight:600; }
 </style>
 </head>
 <body>
@@ -351,12 +376,78 @@
   <!-- SETTINGS -->
   <div class="panel">
     <div class="p-title">Settings</div>
+    <div class="target-summary" id="target-summary">
+      <div>
+        <div class="t">benchmark target</div>
+        <div class="v" id="target-value">not set up yet</div>
+      </div>
+      <button class="btn" style="margin-left:auto;" onclick="openWiz()">Run setup wizard</button>
+    </div>
+
+    </div>
     <div class="field">
+      <label>runs per task (full benchmark)</label>
+      <select id="cfg-runs">
+        <option value="1">1 — fastest</option>
+        <option value="3">3 — most stable</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>open report in a new tab when done</label>
+      <select id="cfg-open">
+        <option value="on">on</option>
+        <option value="off">off</option>
+      </select>
+    </div>
+    <button class="btn" onclick="saveConfig()">Save settings</button>
+    <button class="btn btn-ghost" onclick="resetConfig()" id="reset-btn">Reset to blank</button>
+    <span id="cfg-msg" class="hint"></span>
+  </div>
+
+  <p class="muted">effbench runs a private server on this machine only (127.0.0.1) — nothing leaves your computer.</p>
+</div>
+
+
+<!-- setup wizard modal -->
+<div class="wiz-overlay" id="wiz-overlay">
+  <div class="wiz" role="dialog" aria-modal="true" aria-label="Setup wizard">
+    <div class="wiz-kicker">effbench setup</div>
+
+    <!-- step 1: the fork -->
+    <div id="wiz-step-1">
+      <div class="wiz-title">What are we testing?</div>
+      <div class="wiz-sub">One question, then the wizard fills in the rest.</div>
+      <div class="wiz-choices">
+        <button class="wiz-choice" onclick="wizChoose('local')">
+          <div class="big">🖥️&nbsp; This PC</div>
+          <div class="small">A model server running on this machine — llama.cpp, LM Studio, Ollama, vLLM…</div>
+        </button>
+        <button class="wiz-choice" onclick="wizChoose('cloud')">
+          <div class="big">☁️&nbsp; A cloud provider</div>
+          <div class="small">Ollama Cloud, OpenAI, OpenRouter, z.ai or any OpenAI-compatible API.</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- step 2L: local server -->
+    <div id="wiz-step-local" style="display:none;">
+      <div class="wiz-title">Local server</div>
+      <div class="wiz-sub">Where does your model server live? Try Detect first — it scans the usual ports.</div>
+      <div class="field">
       <label>AI server URL</label>
       <input type="text" id="cfg-url" placeholder="http://localhost:11434" style="width:340px;">
       <div class="hint">where your model server lives (llama.cpp, LM Studio, Ollama, vLLM…)</div>
+      <div style="margin-top:10px;">
+        <button class="btn" onclick="wizDetect()">🔍 Detect my server</button>
+        <span id="wiz-detect-result" class="hint"></span>
+      </div>
     </div>
-    <div class="field">
+
+    <!-- step 2C: cloud -->
+    <div id="wiz-step-cloud" style="display:none;">
+      <div class="wiz-title">Cloud provider</div>
+      <div class="wiz-sub">Pick a provider, paste your key, choose a model from the live list. Test before saving.</div>
+      <div class="field">
       <label>cloud endpoint (optional)</label>
       <select id="cfg-cloud" onchange="cloudSelChanged()">
         <option value="">none — use a local server</option>
@@ -388,27 +479,15 @@
       <span id="cloud-test-result"></span>
       <div class="hint">Cloud speeds include network latency and are labelled cloud in every report.</div>
     </div>
+    </div>
 
-    <div class="field">
-      <label>runs per task (full benchmark)</label>
-      <select id="cfg-runs">
-        <option value="1">1 — fastest</option>
-        <option value="3">3 — most stable</option>
-      </select>
+    <div class="wiz-nav">
+      <span class="wiz-stepnum" id="wiz-stepnum">step 1 of 2</span>
+      <button class="wiz-skip" onclick="closeWiz()">skip for now</button>
+      <button class="btn btn-ghost" id="wiz-back" style="display:none;" onclick="wizBack()">Back</button>
+      <button class="btn" id="wiz-finish" style="display:none;" onclick="wizFinish()">Save &amp; finish</button>
     </div>
-    <div class="field">
-      <label>open report in a new tab when done</label>
-      <select id="cfg-open">
-        <option value="on">on</option>
-        <option value="off">off</option>
-      </select>
-    </div>
-    <button class="btn" onclick="saveConfig()">Save settings</button>
-    <button class="btn btn-ghost" onclick="resetConfig()" id="reset-btn">Reset to blank</button>
-    <span id="cfg-msg" class="hint"></span>
   </div>
-
-  <p class="muted">effbench runs a private server on this machine only (127.0.0.1) — nothing leaves your computer.</p>
 </div>
 
 <script>
@@ -906,6 +985,64 @@ async function resetConfig() {
   }
 }
 
+// ---- setup wizard -------------------------------------------------------
+let wizStep = 1;           // 1 = fork, 2 = local|cloud detail
+let wizBranch = null;      // 'local' | 'cloud'
+function wizShow(id) {
+  ['wiz-step-1', 'wiz-step-local', 'wiz-step-cloud'].forEach(s =>
+    document.getElementById(s).style.display = (s === id) ? '' : 'none');
+  const fork = id === 'wiz-step-1';
+  document.getElementById('wiz-back').style.display = fork ? 'none' : '';
+  document.getElementById('wiz-finish').style.display = fork ? 'none' : '';
+  document.getElementById('wiz-stepnum').textContent = fork ? 'step 1 of 2' : 'step 2 of 2';
+}
+function openWiz() {
+  document.getElementById('wiz-overlay').classList.add('open');
+  wizShow('wiz-step-1');
+}
+function closeWiz() { document.getElementById('wiz-overlay').classList.remove('open'); }
+function wizChoose(branch) {
+  wizBranch = branch;
+  wizShow(branch === 'local' ? 'wiz-step-local' : 'wiz-step-cloud');
+  if (branch === 'cloud') cloudSelChanged();   // reveal fields per current selection
+}
+function wizBack() { wizShow('wiz-step-1'); }
+async function wizDetect() {
+  const out = document.getElementById('wiz-detect-result');
+  out.textContent = 'scanning…';
+  try {
+    const r = await api('/api/detect');
+    if (r.found) { document.getElementById('cfg-url').value = r.found; out.textContent = '✓ ' + (r.model || 'server found') + ' at ' + r.found; }
+    else out.textContent = 'nothing found on the usual ports — type the address manually';
+  } catch (e) { out.textContent = 'detect failed: ' + e.message; }
+}
+async function wizFinish() {
+  const btn = document.getElementById('wiz-finish');
+  btn.disabled = true; btn.textContent = 'saving…';
+  try {
+    if (wizBranch === 'cloud') {
+      await saveConfig();               // existing save path: keystore + config
+    } else {
+      const url = document.getElementById('cfg-url').value.trim();
+      await api('/api/config', { method: 'POST', body: JSON.stringify({ url }) });
+    }
+    await refreshTargetSummary();
+    closeWiz();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Save & finish';
+    alert('Could not save: ' + e.message);
+  }
+}
+async function refreshTargetSummary() {
+  const s = await api('/api/state');
+  const c = s.config.cloud || {};
+  let txt;
+  if (c.provider) txt = 'cloud — ' + (c.provider === 'custom' ? (c.url || 'custom') : c.provider) + (c.model ? ' · ' + c.model : '');
+  else if (s.config.url) txt = 'local — ' + s.config.url;
+  else txt = 'not set up yet';
+  document.getElementById('target-value').textContent = txt;
+}
+
 async function loadConfig() {
   const s = await api('/api/state');
   document.getElementById('ver').textContent = 'v' + s.version;
@@ -914,6 +1051,7 @@ async function loadConfig() {
   document.getElementById('cfg-open').value = s.config.open ? 'on' : 'off';
   const c = s.config.cloud || {};
   if (c.provider) {
+    document.getElementById('cfg-cloud').value = 'none';
     document.getElementById('cfg-cloud').value = c.provider;
     document.getElementById('cfg-cloud-model').value = c.model || '';
     document.getElementById('cfg-cloud-keyenv').value = c.key_env || '';
@@ -921,6 +1059,8 @@ async function loadConfig() {
     cloudSelChanged();
     refreshKeyStatus(c.url, c.model);
   }
+  await refreshTargetSummary();
+  if (!c.provider && !s.config.url) openWiz();   // blank config → wizard greets you
 }
 
 function collectCloudCfg() {

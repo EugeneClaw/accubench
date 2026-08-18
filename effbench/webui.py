@@ -483,6 +483,8 @@ class Handler(BaseHTTPRequestHandler):
                 cloud["url"] = normalise_url(cloud.get("url") or "")
             for k, v in body.items():
                 if k in ("url", "runs", "open", "cloud"):
+                    if k == "url" and not (v or "").strip():
+                        continue  # blank URL never overwrites a saved one
                     config.set_value(k, v)
             from . import keystore
             if isinstance(cloud, dict) and cloud.get("url") and cloud.get("model"):

@@ -91,6 +91,7 @@ class CloudClient:
         req = urllib.request.Request(
             self.url + "/chat/completions", data=data, headers=headers)
         content_parts = []
+        reasoning_parts = []
         usage = None
         finish = None
         ttft = None
@@ -118,7 +119,7 @@ class CloudClient:
                         if ttft is None:
                             ch = ev.get("choices") or []
                             d = (ch[0].get("delta") or {}) if ch else {}
-                            if d.get("content"):
+                            if d.get("content") or d.get("reasoning_content"):
                                 ttft = time.time() - t0
                         if ev.get("usage"):
                             usage = ev["usage"]
@@ -127,6 +128,8 @@ class CloudClient:
                             d = ch[0].get("delta") or {}
                             if d.get("content"):
                                 content_parts.append(d["content"])
+                            if d.get("reasoning_content"):
+                                reasoning_parts.append(d["reasoning_content"])
                             finish = ch[0].get("finish_reason") or finish
         except urllib.error.HTTPError as e:
             try:
@@ -138,26 +141,32 @@ class CloudClient:
             return None, self._sanitise_error(type(e).__name__ + ": " + str(e))
         t_end = time.time()
         content = "".join(content_parts)
+        reasoning = "".join(reasoning_parts)
         n_completion = (usage or {}).get("completion_tokens")
-        if not n_completion and content:
-            n_completion = max(1, int(len(content) / 4))
+        if not n_completion:
+            # estimate from whatever text actually came back (some providers
+            # never send usage; thinking models may put it all in reasoning)
+            est_text = content or reasoning
+            if est_text:
+                n_completion = max(1, int(len(est_text) / 4))
         gen_s = max(0.01, t_end - t0 - (ttft or 0))
         out = {
             "choices": [{
                 "index": 0,
-                "message": {"role": "assistant", "content": content},
+                "message": {"role": "assistant", "content": content,
+                            "reasoning_content": reasoning},
                 "finish_reason": finish,
             }],
             "usage": {
-                "completion_tokens": n_completion,
-                "prompt_tokens": (usage or {}).get("prompt_tokens"),
+                "completion_tokens": n_completion or 0,
+                "prompt_tokens": (usage or {}).get("prompt_tokens") or 0,
             },
         }
         out["_perf"] = {
-            "predicted_per_second": (n_completion / gen_s) if gen_s > 0 else 0,
-            "predicted_n": n_completion,
+            "predicted_per_second": (n_completion / gen_s) if (n_completion and gen_s > 0) else 0,
+            "predicted_n": n_completion or 0,
             "predicted_s": gen_s,
             "stream_ttft": ttft,
-            "estimated": True,
+            "estimated": usage is None,
         }
         return out, None

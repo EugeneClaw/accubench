@@ -7,13 +7,14 @@ Results land in soak-results.jsonl; render anytime:
     python3 -m effbench report --ledger soak-results.jsonl --out soak-report.html
 """
 import argparse
+import os
 import json
 import subprocess
 import sys
 import time
 import urllib.request
 
-HERE = "/opt/effbench"
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def get(url, timeout=8):

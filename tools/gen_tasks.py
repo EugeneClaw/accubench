@@ -6,7 +6,7 @@ import re
 import urllib.request
 
 URL = os.environ.get("EFFBENCH_URL", "http://localhost:11434") + "/v1/chat/completions"
-OUT = "/opt/effbench/builder-drafts"
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "builder-drafts")
 os.makedirs(OUT, exist_ok=True)
 
 COMMON = """You are drafting tasks for a deterministic benchmark suite that measures

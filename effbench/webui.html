@@ -358,7 +358,8 @@
       <select id="cfg-cloud" onchange="cloudSelChanged()">
         <option value="">none — local server only</option>
         <option value="zai">z.ai (GLM models) — key from GLM_API_KEY</option>
-        <option value="openrouter">OpenRouter — key from OPENROUTER_API_KEY</option>
+        <option value="openai">OpenAI (GPT models) — key from OPENAI_API_KEY</option>
+        <option value="openrouter">OpenRouter (incl. Claude, Llama, Gemini) — key from OPENROUTER_API_KEY</option>
         <option value="custom">custom OpenAI-compatible…</option>
       </select>
       <input type="text" id="cfg-cloud-url" placeholder="custom base URL, e.g. https://provider.example/v4" style="width:340px; display:none;">
@@ -729,6 +730,7 @@ async function doCompare() {
 
 const CLOUD_PRESETS = {
   zai: {url: 'https://api.z.ai/api/coding/paas/v4', keyenv: 'GLM_API_KEY'},
+  openai: {url: 'https://api.openai.com/v1', keyenv: 'OPENAI_API_KEY'},
   openrouter: {url: 'https://openrouter.ai/api/v1', keyenv: 'OPENROUTER_API_KEY'},
   custom: null
 };

@@ -23,10 +23,15 @@ PRESETS = {
         "key_env_default": "GLM_API_KEY",
         "note": "GLM models (z.ai coding plan endpoint)",
     },
+    "openai": {
+        "base_url": "https://api.openai.com/v1",
+        "key_env_default": "OPENAI_API_KEY",
+        "note": "GPT models",
+    },
     "openrouter": {
         "base_url": "https://openrouter.ai/api/v1",
         "key_env_default": "OPENROUTER_API_KEY",
-        "note": "Many providers, one key",
+        "note": "Many providers, one key (incl. Claude, Llama, Gemini)",
     },
     "custom": {
         "base_url": "",
@@ -57,6 +62,16 @@ class CloudClient:
 
     def health(self):
         return {"status": "ok"}
+
+    def _sanitise_error(self, text):
+        """Providers sometimes echo key/account details in error bodies.
+        Keep status + first words only; never forward raw provider text."""
+        text = (text or "").strip().replace("\n", " ")
+        # strip anything that looks like a credential, in any error string
+        import re as _re
+        text = _re.sub(r"(sk-[A-Za-z0-9_-]{8,}|Bearer\s+[A-Za-z0-9._-]{8,}|"
+                       r"eyJ[A-Za-z0-9_-]{10,})", "[redacted]", text)
+        return text[:160]
 
     def chat(self, payload):
         body = dict(payload)
@@ -117,9 +132,9 @@ class CloudClient:
                 detail = e.read().decode()[:400]
             except Exception:
                 detail = ""
-            return None, "HTTP {}: {}".format(e.code, detail)
+            return None, self._sanitise_error("HTTP {}: {}".format(e.code, detail))
         except Exception as e:
-            return None, type(e).__name__ + ": " + str(e)[:300]
+            return None, self._sanitise_error(type(e).__name__ + ": " + str(e))
         t_end = time.time()
         content = "".join(content_parts)
         n_completion = (usage or {}).get("completion_tokens")

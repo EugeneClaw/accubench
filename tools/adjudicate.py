@@ -11,8 +11,8 @@ import json
 import os
 import re
 
-DRAFTS = "/opt/effbench/builder-drafts"
-OUT = "/opt/effbench/suites"
+DRAFTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "builder-drafts")
+OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "suites")
 
 FIXES = {
     "arithmetic-remainder": {

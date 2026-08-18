@@ -2,6 +2,15 @@
 
 All notable changes to effbench, newest first.
 
+## 0.8.1 — 2026-08-18
+
+Security hardening and provider coverage.
+
+- Provider error bodies are sanitised before reaching the ledger or any report — credential-shaped substrings are replaced and length capped, so a provider that echoes key/account details in an error cannot leak them into results.
+- OpenAI preset added (api.openai.com, key from OPENAI_API_KEY); OpenRouter note expanded (Claude, Llama, Gemini reachable through it).
+- CI PII blocklist no longer contains the blocked words in plaintext (patterns are decoded at run time).
+- tools/ scripts no longer hardcode a user's home path.
+
 ## 0.8.0 — 2026-08-18
 
 Three features: cloud endpoints, letter grades, named runs.

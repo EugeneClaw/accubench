@@ -363,16 +363,22 @@
         <option value="zai">z.ai — GLM coding plan</option>
         <option value="openai">OpenAI</option>
         <option value="openrouter">OpenRouter — one key, most models</option>
+        <option value="ollama">Ollama Cloud</option>
         <option value="custom">custom — any OpenAI-compatible cloud</option>
       </select>
       <div class="hint" id="cloud-preset-note"></div>
-      <input type="text" id="cfg-cloud-url" placeholder="custom base URL, e.g. https://provider.example/v4" style="width:340px; display:none;">
-      <div class="hint" id="cloud-url-hint" style="display:none;">The API address — prefilled per provider. Change only if your provider gave you a different one.</div>
-      <input type="text" id="cfg-cloud-model" placeholder="model id, e.g glm-5.3" style="width:340px; display:none;" oninput="cloudModelEdited()">
-      <div class="hint" id="cloud-model-hint" style="display:none;">Model name exactly as your provider writes it — z.ai: <code>glm-5.3</code> · OpenAI: <code>gpt-5.2</code> · OpenRouter: <code>anthropic/claude-sonnet-4.6</code></div>
-      <input type="password" id="cfg-cloud-key" placeholder="paste your API key here" autocomplete="off" style="width:340px; display:none;">
-      <div class="hint" id="cloud-key-hint" style="display:none;">The API key from your provider (starts <code>sk-…</code> or similar). <a href="#" onclick="toggleKeyVis();return false" id="key-show-link">show</a> · saved only on this machine, in <code>~/.effbench/</code>.</div>
+      <input type="text" id="cfg-cloud-url" placeholder="https://provider.example/v4" style="width:340px; display:none;">
+      <div class="hint" id="cloud-url-hint" style="display:none;">The web address the provider gives you for API calls. For Ollama Cloud it is <code>https://ollama.com/v1</code> — we fill it for you.</div>
+      <input list="cloud-model-list" type="text" id="cfg-cloud-model" placeholder="pick or type a model" style="width:340px; display:none;" oninput="cloudModelEdited()">
+      <datalist id="cloud-model-list"></datalist>
+      <div class="hint" id="cloud-model-hint" style="display:none;">Pick from the list (fetched live from the provider once your key is in) or type the exact model id.</div>
+      <input type="password" id="cfg-cloud-key" placeholder="paste your API key here" autocomplete="off" style="width:340px; display:none;" oninput="keyEdited()">
+      <div class="hint" id="cloud-key-hint" style="display:none;">The key your provider issued. <a href="#" onclick="toggleKeyVis();return false" id="key-show-link">show</a> · saved only on this machine.</div>
       <div class="hint" id="cloud-key-status" style="display:none;"></div>
+      <div class="field" id="key-mgmt" style="display:none;">
+        <button class="btn" style="font-size:11px; padding:4px 10px;" onclick="removeThisKey()">remove this key</button>
+        <button class="btn" style="font-size:11px; padding:4px 10px;" onclick="wipeAllKeys()">remove all saved keys</button>
+      </div>
       <details id="cloud-advanced" style="display:none; margin-top:4px;">
         <summary style="cursor:pointer; font-size:11px; color:var(--ink3, #9AA6B5);">advanced: use an environment variable instead</summary>
         <input type="text" id="cfg-cloud-keyenv" placeholder="env var name, e.g. GLM_API_KEY" style="width:340px; margin-top:6px;">
@@ -382,6 +388,7 @@
       <span id="cloud-test-result"></span>
       <div class="hint">Cloud speeds include network latency and are labelled cloud in every report.</div>
     </div>
+
     <div class="field">
       <label>runs per task (full benchmark)</label>
       <select id="cfg-runs">
@@ -759,6 +766,7 @@ async function doCompare() {
 }
 
 const CLOUD_PRESETS = {
+  ollama: { url: "https://ollama.com/v1", keyenv: "OLLAMA_API_KEY" },
   zai: {url: 'https://api.z.ai/api/coding/paas/v4', keyenv: 'GLM_API_KEY'},
   openai: {url: 'https://api.openai.com/v1', keyenv: 'OPENAI_API_KEY'},
   openrouter: {url: 'https://openrouter.ai/api/v1', keyenv: 'OPENROUTER_API_KEY'},
@@ -768,7 +776,8 @@ const CLOUD_NOTES = {
   zai: 'You have a z.ai account (GLM subscription or API credits). Key page: z.ai/manage-apikey/apikey-list',
   openai: 'You have an OpenAI platform account (platform.openai.com). Pay-per-token API key.',
   openrouter: 'One key, most models on earth (Claude, Gemini, Llama…). Good if you don\'t want three accounts. openrouter.ai/keys',
-  custom: 'Any other OpenAI-compatible API (Ollama Cloud, Together, Groq, DeepSeek…). You\'ll need their base URL, a model id, and a key.'
+  ollama: 'Pay-per-token cloud run by Ollama. Key page: ollama.com → Settings → API keys. Model list auto-loads once the key is in.',
+  custom: 'Any other OpenAI-compatible API (Together, Groq, DeepSeek…). You\'ll need their base URL, a model id, and a key.'
 };
 function cloudSelChanged() {
   const v = document.getElementById('cfg-cloud').value;
@@ -785,6 +794,7 @@ function cloudSelChanged() {
   document.getElementById('cloud-key-status').style.display = any ? 'block' : 'none';
   document.getElementById('cloud-advanced').style.display = any ? 'block' : 'none';
   document.getElementById('cloud-test-btn').style.display = any ? 'inline-block' : 'none';
+  document.getElementById('key-mgmt').style.display = any ? 'block' : 'none';
   if (!custom && any) {
     document.getElementById('cfg-cloud-url').value = CLOUD_PRESETS[v].url;
     document.getElementById('cfg-cloud-keyenv').value = CLOUD_PRESETS[v].keyenv;
@@ -820,6 +830,59 @@ async function testCloudConn() {
   }
   btn.disabled = false;
 }
+// ---- wizard behaviour ----
+let _modelListCache = {};
+let _keyDeb = null;
+function keyEdited() {
+  clearTimeout(_keyDeb);
+  _keyDeb = setTimeout(refreshModelList, 600);
+}
+
+async function refreshModelList() {
+  const pv = document.getElementById('cfg-cloud').value;
+  if (!pv) return;
+  const url = pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
+              : (CLOUD_PRESETS[pv] ? CLOUD_PRESETS[pv].url : '');
+  const model = document.getElementById('cfg-cloud-model').value.trim();
+  const key = document.getElementById('cfg-cloud-key').value.trim();
+  const dl = document.getElementById('cloud-model-list');
+  if (!url || !key) { dl.innerHTML = ''; return; }
+  if (_modelListCache[url + '::' + key.slice(-4)]) {
+    dl.innerHTML = _modelListCache[url + '::' + key.slice(-4)];
+    return;
+  }
+  try {
+    const q = 'url=' + encodeURIComponent(url) + '&model=' + encodeURIComponent(model) +
+              '&key=' + encodeURIComponent(key);
+    const r = await api('/api/cloud-models?' + q);
+    const opts = (r.models || []).map(m => '<option value="' + m.replace(/"/g, '&quot;') + '">').join('');
+    _modelListCache[url + '::' + key.slice(-4)] = opts;
+    dl.innerHTML = opts;
+  } catch (e) { /* list is best-effort; typing still works */ }
+}
+
+async function removeThisKey() {
+  const pv = document.getElementById('cfg-cloud').value;
+  const url = pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
+              : (CLOUD_PRESETS[pv] ? CLOUD_PRESETS[pv].url : '');
+  const model = document.getElementById('cfg-cloud-model').value.trim();
+  if (!url || !model) { alert('fill provider + model first'); return; }
+  const r = await api('/api/key-remove', {method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({url, model})});
+  refreshKeyStatus(url, model);
+  document.getElementById('cloud-key-status').textContent =
+    r.ok ? 'key removed from this machine' : 'no saved key for this provider+model';
+}
+
+async function wipeAllKeys() {
+  if (!confirm('Remove ALL saved API keys from this machine?')) return;
+  const r = await api('/api/key-wipe', {method: 'POST', headers: {},
+    body: null});
+  document.getElementById('cloud-key-status').textContent =
+    'removed ' + (r.removed || 0) + ' key(s) from this machine';
+}
+
 async function loadConfig() {
   const s = await api('/api/state');
   document.getElementById('ver').textContent = 'v' + s.version;

@@ -340,6 +340,34 @@ class Handler(BaseHTTPRequestHandler):
                 pass
             self._file(path, "text/html; charset=utf-8")
 
+        elif u.path == "/api/cloud-models":
+            from .cloud import CloudClient
+            from .client import is_cloud_url, normalise_url
+            from . import keystore
+            q = parse_qs(u.query)
+            curl = normalise_url((q.get("url") or [""])[0])
+            model = (q.get("model") or [""])[0].strip()
+            kenv = (q.get("key_env") or [""])[0].strip()
+            pasted = (q.get("key") or [""])[0].strip()
+            if not curl or not is_cloud_url(curl):
+                self._json({"error": "not a cloud URL"}, 400)
+                return
+            key = pasted or keystore.load_key(curl, model)
+            if not key:
+                self._json({"error": "no key — paste it in the key field first"}, 400)
+                return
+            try:
+                cc = CloudClient(curl, model, kenv, key=key)
+                models = cc.list_models()
+                self._json({"models": models})
+            except Exception as e:
+                self._json({"error": (type(e).__name__ + ": " + str(e))[:200]}, 502)
+
+        elif u.path == "/api/keys":
+            from . import keystore
+            idents = keystore.list_idents()
+            self._json({"idents": idents})
+
         elif u.path == "/api/detect":
             url, props, tried = _detect_server()
             self._json({"found": url, "tried": tried,
@@ -404,6 +432,23 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self._json({"ok": False, "detail": (type(e).__name__ + ": " + str(e))[:200]})
             return
+        elif u.path == "/api/key-remove":
+            body = self._body()
+            from . import keystore
+            from .client import normalise_url
+            url = normalise_url(body.get("url") or "")
+            model = (body.get("model") or "").strip()
+            if not url or not model:
+                self._json({"ok": False, "error": "url and model required"}, 400)
+                return
+            gone = keystore.remove_key(url, model)
+            self._json({"ok": gone})
+
+        elif u.path == "/api/key-wipe":
+            from . import keystore
+            n = keystore.wipe()
+            self._json({"ok": True, "removed": n})
+
         elif u.path == "/api/rename":
             body = self._body()
             name = os.path.basename(body.get("name") or "")

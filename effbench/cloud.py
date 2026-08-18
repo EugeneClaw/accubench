@@ -64,6 +64,26 @@ class CloudClient:
     def health(self):
         return {"status": "ok"}
 
+    def list_models(self):
+        """Fetch the provider's model list (OpenAI /v1/models surface)."""
+        headers = {}
+        if self._key:
+            headers["Authorization"] = "Bearer " + self._key
+        req = urllib.request.Request(self.url + "/models", headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = json.load(resp)
+        except urllib.error.HTTPError as e:
+            raise RuntimeError("HTTP %d listing models" % e.code)
+        except urllib.error.URLError as e:
+            raise RuntimeError("cannot reach provider: %s" % e.reason)
+        out = []
+        for m in (data.get("data") or []):
+            mid = m.get("id") if isinstance(m, dict) else None
+            if mid:
+                out.append(mid)
+        return sorted(out)
+
     def _sanitise_error(self, text):
         """Providers sometimes echo key/account details in error bodies.
         Keep status + first words only; never forward raw provider text."""

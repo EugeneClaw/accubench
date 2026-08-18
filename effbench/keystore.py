@@ -34,6 +34,31 @@ def load_key(endpoint_url, model):
     return _load().get(_ident(endpoint_url, model), "")
 
 
+def list_idents():
+    """All stored identities (url::model), for the settings page."""
+    return sorted(_load().keys())
+
+
+def remove_key(endpoint_url, model):
+    """Remove one stored key."""
+    data = _load()
+    ident = _ident(endpoint_url, model)
+    if ident in data:
+        del data[ident]
+        _flush(data)
+        return True
+    return False
+
+
+def wipe():
+    """Remove ALL stored keys. Returns count removed."""
+    data = _load()
+    n = len(data)
+    if n:
+        _flush({})
+    return n
+
+
 def _ident(url, model):
     return (url or "").rstrip("/") + "::" + (model or "")
 
@@ -45,3 +70,13 @@ def _load():
             return v if isinstance(v, dict) else {}
     except (OSError, ValueError):
         return {}
+
+
+def _flush(data):
+    os.makedirs(os.path.dirname(_KEYS_PATH), exist_ok=True)
+    with open(_KEYS_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+    try:
+        os.chmod(_KEYS_PATH, 0o600)
+    except OSError:
+        pass

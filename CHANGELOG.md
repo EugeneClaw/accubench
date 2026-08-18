@@ -2,6 +2,10 @@
 
 All notable changes to effbench, newest first.
 
+## 0.9.3 — 2026-08-18
+
+Cloud setup takes a pasted API key.
+
 ## 0.9.2 — 2026-08-18
 
 Report polish.

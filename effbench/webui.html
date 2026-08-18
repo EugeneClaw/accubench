@@ -359,19 +359,25 @@
     <div class="field">
       <label>cloud endpoint (optional)</label>
       <select id="cfg-cloud" onchange="cloudSelChanged()">
-        <option value="">none — local server only</option>
-        <option value="zai">z.ai — GLM models</option>
-        <option value="openai">OpenAI — GPT models</option>
-        <option value="openrouter">OpenRouter — most models incl. Claude & Gemini</option>
-        <option value="custom">custom OpenAI-compatible…</option>
+        <option value="">none — use a local server</option>
+        <option value="zai">z.ai — GLM coding plan</option>
+        <option value="openai">OpenAI</option>
+        <option value="openrouter">OpenRouter — one key, most models</option>
+        <option value="custom">custom — any OpenAI-compatible cloud</option>
       </select>
       <div class="hint" id="cloud-preset-note"></div>
       <input type="text" id="cfg-cloud-url" placeholder="custom base URL, e.g. https://provider.example/v4" style="width:340px; display:none;">
       <div class="hint" id="cloud-url-hint" style="display:none;">The API address — prefilled per provider. Change only if your provider gave you a different one.</div>
-      <input type="text" id="cfg-cloud-model" placeholder="model id, e.g. glm-5.3" style="width:340px; display:none;">
+      <input type="text" id="cfg-cloud-model" placeholder="model id, e.g glm-5.3" style="width:340px; display:none;" oninput="cloudModelEdited()">
       <div class="hint" id="cloud-model-hint" style="display:none;">Model name exactly as your provider writes it — z.ai: <code>glm-5.3</code> · OpenAI: <code>gpt-5.2</code> · OpenRouter: <code>anthropic/claude-sonnet-4.6</code></div>
-      <input type="text" id="cfg-cloud-keyenv" placeholder="env var holding the API key, e.g. GLM_API_KEY" style="width:340px; display:none;">
-      <div class="hint" id="cloud-keyenv-hint" style="display:none;">Type the <b>name</b> of the environment variable that holds your key — <u>not the key itself</u>. The key never enters effbench; it's read from your environment at run time.</div>
+      <input type="password" id="cfg-cloud-key" placeholder="paste your API key here" autocomplete="off" style="width:340px; display:none;">
+      <div class="hint" id="cloud-key-hint" style="display:none;">The API key from your provider (starts <code>sk-…</code> or similar). <a href="#" onclick="toggleKeyVis();return false" id="key-show-link">show</a> · saved only on this machine, in <code>~/.effbench/</code>.</div>
+      <div class="hint" id="cloud-key-status" style="display:none;"></div>
+      <details id="cloud-advanced" style="display:none; margin-top:4px;">
+        <summary style="cursor:pointer; font-size:11px; color:var(--ink3, #9AA6B5);">advanced: use an environment variable instead</summary>
+        <input type="text" id="cfg-cloud-keyenv" placeholder="env var name, e.g. GLM_API_KEY" style="width:340px; margin-top:6px;">
+        <div class="hint">For shell users: the NAME of the env var holding the key (effbench reads it at run time; nothing stored). Ignored when a pasted key exists.</div>
+      </details>
       <button class="btn" id="cloud-test-btn" style="display:none; margin-top:6px;" onclick="testCloudConn()">⚡ Test connection</button>
       <span id="cloud-test-result"></span>
       <div class="hint">Cloud speeds include network latency and are labelled cloud in every report.</div>
@@ -770,17 +776,32 @@ function cloudSelChanged() {
   const note = document.getElementById('cloud-preset-note');
   note.textContent = any ? ('Which one? — ' + (CLOUD_NOTES[v] || '')) : '';
   note.style.display = any ? 'block' : 'none';
-  for (const id of ['cfg-cloud-url', 'cfg-cloud-model', 'cfg-cloud-keyenv'])
-    document.getElementById(id).style.display = any ? 'block' : 'none';
-  document.getElementById('cfg-cloud-url').style.display = (any && custom) || (!any) ? 'none' : 'block';
-  document.getElementById('cloud-url-hint').style.display = (any && !custom) ? 'block' : 'none';
+  document.getElementById('cfg-cloud-model').style.display = any ? 'block' : 'none';
   document.getElementById('cloud-model-hint').style.display = any ? 'block' : 'none';
-  document.getElementById('cloud-keyenv-hint').style.display = any ? 'block' : 'none';
+  document.getElementById('cfg-cloud-url').style.display = custom ? 'block' : 'none';
+  document.getElementById('cloud-url-hint').style.display = custom ? 'block' : 'none';
+  document.getElementById('cfg-cloud-key').style.display = any ? 'block' : 'none';
+  document.getElementById('cloud-key-hint').style.display = any ? 'block' : 'none';
+  document.getElementById('cloud-key-status').style.display = any ? 'block' : 'none';
+  document.getElementById('cloud-advanced').style.display = any ? 'block' : 'none';
   document.getElementById('cloud-test-btn').style.display = any ? 'inline-block' : 'none';
   if (!custom && any) {
     document.getElementById('cfg-cloud-url').value = CLOUD_PRESETS[v].url;
     document.getElementById('cfg-cloud-keyenv').value = CLOUD_PRESETS[v].keyenv;
   }
+}
+function toggleKeyVis() {
+  const inp = document.getElementById('cfg-cloud-key');
+  const link = document.getElementById('key-show-link');
+  const showing = inp.type === 'text';
+  inp.type = showing ? 'password' : 'text';
+  link.textContent = showing ? 'show' : 'hide';
+}
+function cloudModelEdited() {
+  const pv = document.getElementById('cfg-cloud').value;
+  const url = pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
+                              : (CLOUD_PRESETS[pv] || {}).url;
+  refreshKeyStatus(url, document.getElementById('cfg-cloud-model').value.trim());
 }
 async function testCloudConn() {
   const btn = document.getElementById('cloud-test-btn');
@@ -809,18 +830,21 @@ async function loadConfig() {
     document.getElementById('cfg-cloud-keyenv').value = c.key_env || '';
     if (c.provider === 'custom') document.getElementById('cfg-cloud-url').value = c.url || '';
     cloudSelChanged();
+    refreshKeyStatus(c.url, c.model);
   }
 }
 
 function collectCloudCfg() {
   const pv = document.getElementById('cfg-cloud').value;
   if (!pv) return null;
+  const key = document.getElementById('cfg-cloud-key').value.trim();
   return {
     provider: pv,
     url: pv === 'custom' ? document.getElementById('cfg-cloud-url').value.trim()
                          : (CLOUD_PRESETS[pv] || {}).url,
     model: document.getElementById('cfg-cloud-model').value.trim(),
-    key_env: document.getElementById('cfg-cloud-keyenv').value.trim()
+    key_env: document.getElementById('cfg-cloud-keyenv').value.trim(),
+    api_key: key || null
   };
 }
 async function saveConfig() {
@@ -839,7 +863,21 @@ async function saveConfig() {
     })
   });
   document.getElementById('cfg-msg').textContent = r.ok ? 'saved ✓' : 'save failed';
+  if (r.ok && r.key_saved) {
+    document.getElementById('cfg-cloud-key').value = '';
+    refreshKeyStatus(cloud.url, cloud.model);
+  }
   setTimeout(() => document.getElementById('cfg-msg').textContent = '', 2000);
+}
+async function refreshKeyStatus(url, model) {
+  const el = document.getElementById('cloud-key-status');
+  if (!url || !model) { el.textContent = ''; return; }
+  try {
+    const r = await fetch('/api/key-status?url=' + encodeURIComponent(url) + '&model=' + encodeURIComponent(model));
+    const d = await r.json();
+    el.textContent = d.saved ? '✓ key saved on this machine — paste a new one to replace it'
+                             : 'no key saved yet — paste one above';
+  } catch (e) { el.textContent = ''; }
 }
 
 loadConfig();

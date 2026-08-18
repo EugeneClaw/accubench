@@ -82,8 +82,12 @@ def _worker(which):
         if cloud and cloud.get("url") and cloud.get("model"):
             # cloud run: no local server needed
             from .cloud import CloudClient
+            from . import keystore
+            key = keystore.load_key(cloud["url"], cloud["model"])
             client = CloudClient(cloud["url"], cloud["model"],
-                                 cloud.get("key_env", ""), cloud.get("name", cloud.get("provider", "cloud")))
+                                 cloud.get("key_env", ""),
+                                 cloud.get("name", cloud.get("provider", "cloud")),
+                                 key=key or None)
             try:
                 props = client.props()
             except Exception as e:
@@ -300,6 +304,13 @@ class Handler(BaseHTTPRequestHandler):
                 out.append(entry)
             self._json({"reports": out})
 
+        elif u.path == "/api/key-status":
+            from . import keystore
+            q = parse_qs(u.query)
+            kurl = (q.get("url") or [""])[0]
+            kmodel = (q.get("model") or [""])[0]
+            self._json({"saved": bool(keystore.load_key(kurl, kmodel))})
+
         elif u.path.startswith("/report/"):
             name = os.path.basename(u.path[len("/report/"):])
             if not name.endswith(".html"):
@@ -364,22 +375,25 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             from .cloud import CloudClient
             from .client import is_cloud_url
+            from . import keystore
             curl = (body.get("url") or "").strip()
             model = (body.get("model") or "").strip()
             kenv = (body.get("key_env") or "").strip()
+            pasted = (body.get("api_key") or "").strip()
             if not curl or not is_cloud_url(curl):
                 self._json({"ok": False, "detail": "not a valid cloud URL"})
                 return
             if not model:
                 self._json({"ok": False, "detail": "model id is empty"})
                 return
-            key = os.environ.get(kenv) if kenv else None
+            # key resolution: pasted > saved > env var
+            key = pasted or keystore.load_key(curl, model) or (os.environ.get(kenv) if kenv else None)
             if not key:
                 self._json({"ok": False,
-                            "detail": f"environment variable '{kenv or '?'}' is not set — set it first (it holds your API key; effbench never stores it)"})
+                            "detail": "no API key — paste one in the key field, or set the env var"})
                 return
             try:
-                cc = CloudClient(curl, model, kenv)
+                cc = CloudClient(curl, model, kenv, key=key)
                 txt, err = cc.chat({"messages": [{"role": "user", "content": "Say OK"}],
                                     "max_tokens": 40})
                 if err:
@@ -414,7 +428,22 @@ class Handler(BaseHTTPRequestHandler):
             for k, v in body.items():
                 if k in ("url", "runs", "open", "cloud"):
                     config.set_value(k, v)
-            self._json({"ok": True, "config": config.load()})
+            # a pasted API key goes to the keystore (0600), never config.json
+            cloud = body.get("cloud")
+            pasted = (body.get("api_key") or "").strip() if isinstance(body, dict) else ""
+            from . import keystore
+            if isinstance(cloud, dict) and cloud.get("url") and cloud.get("model"):
+                if pasted:
+                    keystore.save_key(cloud["url"], cloud["model"], pasted)
+                elif body.get("clear_key"):
+                    keystore.save_key(cloud["url"], cloud["model"], "")
+            elif body.get("clear_key") and cloud is None:
+                # turning cloud off entirely → wipe saved keys too
+                for ident in list(keystore._load()):
+                    url, _, model = ident.partition("::")
+                    keystore.save_key(url, model, "")
+            self._json({"ok": True, "config": config.load(),
+                        "key_saved": bool(pasted)})
 
         elif u.path == "/api/shutdown":
             self._json({"ok": True})

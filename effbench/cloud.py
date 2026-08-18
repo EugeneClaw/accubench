@@ -45,11 +45,12 @@ class CloudClient:
     """Speaks /v1/chat/completions + synthesised /props so run_task,
     wizard and report work unchanged."""
 
-    def __init__(self, url, model, key_env, name=""):
+    def __init__(self, url, model, key_env, name="", key=None):
         self.url = url.rstrip("/")
         self.model = model
         self.name = name
-        self._key = os.environ.get(key_env, "")
+        # explicit key wins; otherwise read from env var at run time
+        self._key = key or os.environ.get(key_env, "")
 
     def props(self):
         return {

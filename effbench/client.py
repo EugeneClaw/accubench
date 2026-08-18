@@ -6,22 +6,34 @@ import urllib.error
 TIMEOUT = 1800  # long-form tasks can take minutes on big contexts
 
 
+def normalise_url(url):
+    """User-typed URLs often lack the scheme — add https:// so urllib
+    accepts them. Idempotent; leaves everything else untouched."""
+    u = (url or "").strip()
+    if not u:
+        return u
+    if not (u.startswith("http://") or u.startswith("https://")):
+        u = "https://" + u
+    return u
+
+
 def is_cloud_url(url):
     """Non-local endpoint = cloud (anything not localhost/LAN/loopback)."""
-    u = (url or "").lower()
-    if u.startswith("https://"):
-        return True
+    u = normalise_url(url).lower()
     local_marks = ("localhost", "127.0.0.1", "0.0.0.0", "[::1]", "192.168.",
                    "10.", "172.16.", "172.17.", "172.18.", "172.19.",
                    "172.2", "172.30.", "172.31.", ".local", ".ts.net")
-    return not any(m in u for m in local_marks)
+    if any(m in u for m in local_marks):
+        return False
+    return u.startswith("http://") or u.startswith("https://")
 
 
-def make_client(url, model=None, key_env=None, name=""):
+def make_client(url, model=None, key_env=None, name="", key=None):
     """Return a CloudClient for remote endpoints, ServerClient otherwise."""
+    url = normalise_url(url)
     if is_cloud_url(url):
         from .cloud import CloudClient
-        return CloudClient(url, model or "", key_env or "", name)
+        return CloudClient(url, model or "", key_env or "", name, key=key)
     return ServerClient(url)
 
 

@@ -2,6 +2,10 @@
 
 All notable changes to effbench, newest first.
 
+## 0.9.5 — 2026-08-18
+
+Cloud URLs work without the https:// prefix.
+
 ## 0.9.4 — 2026-08-18
 
 Test-connection button fix.

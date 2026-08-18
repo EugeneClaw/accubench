@@ -374,9 +374,9 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/cloud-test":
             body = self._body()
             from .cloud import CloudClient
-            from .client import is_cloud_url
+            from .client import is_cloud_url, normalise_url
             from . import keystore
-            curl = (body.get("url") or "").strip()
+            curl = normalise_url(body.get("url") or "")
             model = (body.get("model") or "").strip()
             kenv = (body.get("key_env") or "").strip()
             pasted = (body.get("api_key") or "").strip()
@@ -425,6 +425,10 @@ class Handler(BaseHTTPRequestHandler):
 
         elif u.path == "/api/config":
             body = self._body()
+            # normalise the cloud URL once, at the door
+            if isinstance(body.get("cloud"), dict):
+                from .client import normalise_url
+                body["cloud"]["url"] = normalise_url(body["cloud"].get("url") or "")
             for k, v in body.items():
                 if k in ("url", "runs", "open", "cloud"):
                     config.set_value(k, v)

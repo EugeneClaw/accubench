@@ -260,6 +260,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.send_response(200)
         self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "no-store, max-age=0")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
@@ -425,16 +426,19 @@ class Handler(BaseHTTPRequestHandler):
 
         elif u.path == "/api/config":
             body = self._body()
-            # normalise the cloud URL once, at the door
-            if isinstance(body.get("cloud"), dict):
+            # a pasted API key goes to the keystore (0600), never config.json
+            cloud = body.get("cloud")
+            pasted = ""
+            if isinstance(cloud, dict):
+                pasted = (cloud.get("api_key") or "").strip()
+            pasted = pasted or (body.get("api_key") or "").strip()
+            if isinstance(cloud, dict):
+                cloud.pop("api_key", None)  # strip BEFORE persisting config
                 from .client import normalise_url
-                body["cloud"]["url"] = normalise_url(body["cloud"].get("url") or "")
+                cloud["url"] = normalise_url(cloud.get("url") or "")
             for k, v in body.items():
                 if k in ("url", "runs", "open", "cloud"):
                     config.set_value(k, v)
-            # a pasted API key goes to the keystore (0600), never config.json
-            cloud = body.get("cloud")
-            pasted = (body.get("api_key") or "").strip() if isinstance(body, dict) else ""
             from . import keystore
             if isinstance(cloud, dict) and cloud.get("url") and cloud.get("model"):
                 if pasted:

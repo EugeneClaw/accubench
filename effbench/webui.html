@@ -856,21 +856,33 @@ async function saveConfig() {
     try { await api('/api/detect'); } catch (e) {}
   }
   const cloud = collectCloudCfg();
-  const r = await api('/api/config', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      url: url || null,
-      cloud: cloud,
-      runs: parseInt(document.getElementById('cfg-runs').value, 10),
-      open: document.getElementById('cfg-open').value === 'on'
-    })
-  });
-  document.getElementById('cfg-msg').textContent = r.ok ? 'saved ✓' : 'save failed';
-  if (r.ok && r.key_saved) {
-    document.getElementById('cfg-cloud-key').value = '';
-    refreshKeyStatus(cloud.url, cloud.model);
+  let r;
+  try {
+    r = await api('/api/config', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        url: url || null,
+        cloud: cloud,
+        runs: parseInt(document.getElementById('cfg-runs').value, 10) || 3,
+        open: document.getElementById('cfg-open').value === 'on'
+      })
+    });
+  } catch (e) {
+    document.getElementById('cfg-msg').textContent = 'save failed — server unreachable';
+    setTimeout(() => document.getElementById('cfg-msg').textContent = '', 4000);
+    return;
   }
-  setTimeout(() => document.getElementById('cfg-msg').textContent = '', 2000);
+  if (!r.ok) {
+    document.getElementById('cfg-msg').textContent = 'save failed — ' + (r.error || 'unknown error');
+    setTimeout(() => document.getElementById('cfg-msg').textContent = '', 4000);
+    return;
+  }
+  document.getElementById('cfg-msg').textContent = r.key_saved ? 'saved — key stored on this machine ✓' : 'saved ✓';
+  if (r.key_saved) {
+    document.getElementById('cfg-cloud-key').value = '';
+    refreshKeyStatus(cloud ? cloud.url : '', cloud ? cloud.model : '');
+  }
+  setTimeout(() => document.getElementById('cfg-msg').textContent = '', 4000);
 }
 async function refreshKeyStatus(url, model) {
   const el = document.getElementById('cloud-key-status');

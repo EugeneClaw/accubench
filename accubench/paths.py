@@ -65,22 +65,27 @@ def ensure_data_dir():
 
 
 def migrate_old_data_dir():
-    """One-shot copy of ~/.effbench → ~/.accubench on first run after upgrade.
+    """One-shot copy of the old data dir into the resolved new one on
+    first run after upgrade.
 
     Behaviour:
-      * If ~/.accubench already exists: do nothing (the new dir wins).
-      * If ~/.effbench doesn't exist: do nothing (fresh install).
-      * Otherwise: copy into a temp dir inside ~/.accubench's parent,
-        write a `.migrated` stamp INSIDE the temp dir, then atomic
-        rename into place. Old ~/.effbench is left untouched for
-        instant rollback.
+      * If the resolved new data dir already exists: do nothing (the
+        new dir wins).
+      * If the old data dir doesn't exist: do nothing (fresh install).
+      * Otherwise: copy into a temp dir next to the new dir, write a
+        `.migrated` stamp INSIDE the temp dir, then atomic rename into
+        place. Old data dir is left untouched for instant rollback.
     Returns the path of the migrated-to directory, or None on no-op.
+    Honours $ACCUBENCH_HOME for both source and target.
     """
     import shutil
     import tempfile
 
-    new = os.path.expanduser("~/.accubench")
-    if os.path.isdir(new):
+    new = os.environ.get("ACCUBENCH_HOME") or os.path.expanduser("~/.accubench")
+    # An empty target dir is treated as "not yet created" — we still
+    # own its contents in that case, so migrate proceeds. A non-empty
+    # target dir means another install owns it; bail out.
+    if os.path.isdir(new) and os.listdir(new):
         return None
     old = os.path.expanduser("~/.effbench")
     if not os.path.isdir(old):

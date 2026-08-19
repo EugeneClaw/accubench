@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>effbench</title>
+<title>AccuBench</title>
 <style>
   :root {
     --void:#07090D; --carbon:#0D1117; --graphite:#161C24; --hairline:#1F2733;
@@ -306,6 +306,20 @@
           ■ Stop
         </button>
       </div>
+
+      <div id="batch-ui" style="margin-top:14px; padding-top:12px; border-top:1px solid var(--hairline);">
+        <div style="font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted,#8b95a5); margin-bottom:8px;">Batch queue</div>
+        <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+          <div style="flex:1; min-width:260px;">
+            <select id="batch-models" multiple size="6" style="width:100%; min-height:110px; background:var(--panel,#141a24); color:var(--ink,#E8EDF4); border:1px solid var(--hairline); border-radius:8px;"></select>
+            <div class="hint" style="margin-top:6px;">Ctrl/Cmd-click to pick several — runs full suite on each, one after another</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="btn" id="btn-batch" onclick="startBatch()">Run batch</button>
+            <button class="btn" id="btn-batch-fill" onclick="fillBatchFromProvider()">Fill from provider</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="progress" style="display:none">
@@ -389,6 +403,12 @@
         <button class="btn" onclick="doCompare()">Compare</button>
       </div>
       <div id="tags-body"></div>
+      <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--hairline); display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn" id="btn-export" onclick="exportResults()">Export results</button>
+        <button class="btn" id="btn-import" onclick="pickImport()">Import results</button>
+        <span class="hint" id="imp-hint">merge another machine's ledger — same file twice is a no-op</span>
+        <input type="file" id="import-file" accept=".jsonl,.json" style="display:none" onchange="doImport(this)">
+      </div>
     </div>
   </div>
 
@@ -400,9 +420,6 @@
         <div class="t">benchmark target</div>
         <div class="v" id="target-value">not set up yet</div>
       </div>
-      <button class="btn" id="btn-export" onclick="exportResults()">Export results</button>
-      <button class="btn" id="btn-import" onclick="pickImport()">Import results</button>
-      <input type="file" id="exportAfile" style="display:none" onchange="doImport(this)">
       <button class="btn" style="margin-left:auto;" onclick="openWiz()">Run setup wizard</button>
     </div>
 
@@ -585,6 +602,37 @@ async function startRun(which) {
   document.getElementById('elapsed').textContent = '0:00';
   buildRail(0);
   buildRail(which === 'quick' ? 12 : 36);
+  startRunTail();
+}
+
+async function startBatch() {
+  const sel = document.getElementById('batch-models');
+  const picked = [...sel.selectedOptions].map(o => o.value);
+  if (picked.length < 1) { alert('pick at least one model'); return; }
+  const r = await api('/api/run', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({which: 'full', queue: picked.map(m => ({model: m}))})
+  });
+  if (!r.started) { setRunStatus('a benchmark is already running — wait for it', true); return; }
+  document.getElementById('progress').style.display = 'block';
+  document.getElementById('summary').style.display = 'none';
+  runStartedAt = Date.now();
+  buildRail(0);
+  startRunTail();
+}
+
+async function fillBatchFromProvider() {
+  const c = await loadConfig();
+  const cloud = c.cloud || {};
+  if (!cloud.url || !cloud.model) { alert('save a cloud target first (setup wizard)'); return; }
+  const q = 'url=' + encodeURIComponent(cloud.url) + '&model=' + encodeURIComponent(cloud.model);
+  const r = await api('/api/cloud-models?' + q);
+  const sel = document.getElementById('batch-models');
+  sel.innerHTML = (r.models || []).map(m => '<option value="' + m + '">' + m + '</option>').join('');
+  sel.size = Math.min(10, Math.max(4, (r.models || []).length));
+}
+
+function startRunTail() {
   if (!tickTimer) tickTimer = setInterval(tick, 500);
   setRunStatus('starting…', true);
   poll();
@@ -612,7 +660,7 @@ async function exportResults() {
 }
 
 function pickImport() {
-  document.getElementById('exportAfile').click();
+  document.getElementById('import-file').click();
 }
 
 async function doImport(ev) {
@@ -639,16 +687,22 @@ function poll() {
   pollTimer = setTimeout(async () => {
     const s = await api('/api/state');
     renderState(s);
-    if (s.phase === 'running' || s.phase === 'detecting' || s.phase === 'reporting') poll();
+    if (['running', 'detecting', 'reporting', 'queue_next'].includes(s.phase)) poll();
   }, 700);
 }
 
 function renderState(s) {
-  const busy = ['detecting', 'running', 'reporting'].includes(s.phase);
+  const busy = ['detecting', 'running', 'reporting', 'queue_next'].includes(s.phase);
   document.getElementById('btn-quick').disabled = busy;
   document.getElementById('btn-full').disabled = busy;
-  showStop(['detecting', 'running'].includes(s.phase));
+  document.getElementById('btn-batch').disabled = busy;
+  showStop(['detecting', 'running', 'queue_next'].includes(s.phase));
   setMast(busy ? 'running' : 'local only');
+
+  if (s.phase === 'queue_next') {
+    setRunStatus('batch ' + ((s.queue_idx || 0) + 1) + '/' + (s.queue_len || '?') +
+                 ' — switching model…', true);
+  }
 
   if (s.phase === 'idle' && !s.summary) setRunStatus('pick a benchmark to start');
 

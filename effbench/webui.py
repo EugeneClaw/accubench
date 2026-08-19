@@ -73,129 +73,163 @@ def _detect_server():
 
 
 def _worker(which):
-    """Background benchmark run. One at a time (guarded by _state['running'])."""
+    """Thread entry: run one benchmark or a whole queue, sequentially."""
     try:
-        from .__main__ import run_task
-        from .tasks import load_suite
-        from types import SimpleNamespace
-
-        with _state_lock:
-            _state["cancel"] = False
-        _set(phase="detecting", error=None, rows=[], summary=None,
-             tasks_done=0, tasks_total=0, current_task="", which=which)
-        cloud = config.get("cloud") or None
-        if cloud and cloud.get("url") and cloud.get("model"):
-            # cloud run: no local server needed
-            from .cloud import CloudClient
-            from . import keystore
-            key = keystore.load_key(cloud["url"])
-            client = CloudClient(cloud["url"], cloud["model"],
-                                 cloud.get("key_env", ""),
-                                 cloud.get("name", cloud.get("provider", "cloud")),
-                                 key=key or None)
-            try:
-                props = client.props()
-            except Exception as e:
-                _set(phase="error", error=f"Cloud endpoint failed: {e}")
-                return
-            url = cloud["url"]
-        else:
-            url, props, _ = _detect_server()
-            if not url:
-                _set(phase="error", error="No AI server found. Set the server URL in Settings "
-                                          "(e.g. http://localhost:11434) and make sure it's running.")
-                return
-            client = make_client(url)
-
-        suite = _suite_path(which)
-        tasks = load_suite(suite)
-        runs = 1 if which == "quick" else max(1, int(config.get("runs") or 1))
-        if cloud and cloud.get("url") and cloud.get("model"):
-            cname = cloud.get("name") or cloud.get("provider") or "cloud"
-            tag = f"{cname}-{cloud['model']}-cloud-{datetime.now().strftime('%Y%m%d-%H%M%S')}".replace("/", "-").replace(" ", "-")
-        else:
-            tag = wizard._autotag(props)
-        os.makedirs(REPORTS_DIR, exist_ok=True)
-        out = os.path.join(REPORTS_DIR, f"{tag}.html")
-
-        _set(phase="running", tag=tag, tasks_total=len(tasks) * runs,
-             model=os.path.basename(props.get("model_path", "?")),
-             url=url)
-
-        server = {
-            "build": props.get("build", "?"),
-            "total_slots": props.get("total_slots", "?"),
-            "model_path": props.get("model_path", "?"),
-        }
-        import uuid
-        run_id = uuid.uuid4().hex[:8]
-        rows = []
-        done = 0
-        for ri in range(1, runs + 1):
-            for t in tasks:
-                with _state_lock:
-                    if _state.get("cancel"):
-                        _set(phase="cancelled")
-                        return
-                _set(current_task=t["id"])
-                ns = SimpleNamespace(think=False, tag=tag)
-                rec = run_task(client, t, ns, server, run_id, ri)
-                append_record(LEDGER, rec)
-                done += 1
-                rows.append({
-                    "task": t["id"], "pass": bool(rec.get("pass")),
-                    "tok_s": rec.get("tok_s") or 0,
-                    "err": bool(rec.get("error")),
-                })
-                _set(tasks_done=done, rows=list(rows))
-
-        _set(phase="reporting")
-        hwc, klass, band = wizard._make_report(tag, LEDGER, props, out)
-        bag = [r for r in load_ledger(LEDGER) if r.get("tag") == tag]
-        agg = aggregate(bag)
-        suite = suite_of(bag)
-        from .grade import grade_run
-        grade = grade_run(agg.get("n_pass", 0), agg.get("n", 0))
-        rtps = agg.get("raw_tps") or 0
-        summary = {
-            "tag": tag,
-            "grade": grade,
-            "report": f"/report/{os.path.basename(out)}",
-            "suite": suite,
-            "raw_tps": round(rtps, 1),
-            "gen_tps": round(agg.get("gen_tps_median") or 0, 1),
-            "peak_tps": round(agg.get("gen_tps_peak") or agg.get("peak_tps") or 0, 1),
-            "p90": round(agg.get("p90_tps") or 0, 1),
-            "pass_rate": agg.get("pass_rate") or 0,
-            "eff_tps": round(agg.get("eff_tps") or rtps * (agg.get("pass_rate") or 0), 1),
-            "n_tasks": agg.get("n", 0),
-            "n_pass": agg.get("n_pass", 0),
-            "fail_tasks": [r.get("task", "?") for r in bag if not r.get("pass")],
-            "rows": [
-                {"task": r.get("task", "?"), "pass": bool(r.get("pass"))}
-                for r in sorted(bag, key=lambda r: r.get("i", 0))
-            ],
-            "hw_class": hwc,
-            "fit": klass,
-            "band": list(band[:2]) if band else None,
-        }
-        _set(phase="done", summary=summary)
-        if config.get("open") is not False:
-            try:
-                webbrowser.open(f"file://{os.path.abspath(out)}")
-            except Exception:
-                pass
+        _worker_inner(which)
     except Exception as e:
         _set(phase="error", error=str(e)[:300])
     finally:
         _set(running=False)
 
 
-def _start_run(which):
+def _worker_inner(which):
+    """One pass of the benchmark against the current target (queue-aware)."""
+    from .__main__ import run_task
+    from .tasks import load_suite
+    from types import SimpleNamespace
+
+    _state["cancel"] = False  # plain write; _set/_state_lock not needed
+    _set(phase="detecting", error=None, rows=[], summary=None,
+         tasks_done=0, tasks_total=0, current_task="", which=which,
+         queue_len=len(_state.get("queue") or []))
+    cloud = dict(config.get("cloud") or {})
+    _q = _state.get("queue") or []
+    _qi = _state.get("queue_idx", 0)
+    if _q and _qi < len(_q):
+        cloud.update(_q[_qi])
+    if cloud and cloud.get("url") and cloud.get("model"):
+        # cloud run: no local server needed
+        from .cloud import CloudClient
+        from . import keystore
+        key = keystore.load_key(cloud["url"])
+        client = CloudClient(cloud["url"], cloud["model"],
+                             cloud.get("key_env", ""),
+                             cloud.get("name", cloud.get("provider", "cloud")),
+                             key=key or None)
+        try:
+            props = client.props()
+        except Exception as e:
+            _set(phase="error", error=f"Cloud endpoint failed: {e}")
+            return
+        url = cloud["url"]
+    else:
+        url, props, _ = _detect_server()
+        if not url:
+            _set(phase="error", error="No AI server found. Set the server URL in Settings "
+                                      "(e.g. http://localhost:11434) and make sure it's running.")
+            return
+        client = make_client(url)
+
+    suite = _suite_path(which)
+    tasks = load_suite(suite)
+    runs = 1 if which == "quick" else max(1, int(config.get("runs") or 1))
+    if cloud and cloud.get("url") and cloud.get("model"):
+        cname = cloud.get("name") or cloud.get("provider") or "cloud"
+        tag = f"{cname}-{cloud['model']}-cloud-{datetime.now().strftime('%Y%m%d-%H%M%S')}".replace("/", "-").replace(" ", "-")
+    else:
+        tag = wizard._autotag(props)
+    os.makedirs(REPORTS_DIR, exist_ok=True)
+    out = os.path.join(REPORTS_DIR, f"{tag}.html")
+
+    _set(phase="running", tag=tag, tasks_total=len(tasks) * runs,
+         model=os.path.basename(props.get("model_path", "?")),
+         url=url)
+
+    server = {
+        "build": props.get("build", "?"),
+        "total_slots": props.get("total_slots", "?"),
+        "model_path": props.get("model_path", "?"),
+    }
+    import uuid
+    run_id = uuid.uuid4().hex[:8]
+    rows = []
+    done = 0
+    for ri in range(1, runs + 1):
+        for t in tasks:
+            with _state_lock:
+                cancelled = _state.get("cancel")
+            if cancelled:
+                _set(phase="cancelled")
+                return
+            _set(current_task=t["id"])
+            ns = SimpleNamespace(think=False, tag=tag)
+            rec = run_task(client, t, ns, server, run_id, ri)
+            append_record(LEDGER, rec)
+            done += 1
+            rows.append({
+                "task": t["id"], "pass": bool(rec.get("pass")),
+                "tok_s": rec.get("tok_s") or 0,
+                "err": bool(rec.get("error")),
+            })
+            _set(tasks_done=done, rows=list(rows))
+
+    _set(phase="reporting")
+    hwc, klass, band = wizard._make_report(tag, LEDGER, props, out)
+    bag = [r for r in load_ledger(LEDGER) if r.get("tag") == tag]
+    agg = aggregate(bag)
+    suite = suite_of(bag)
+    from .grade import grade_run
+    grade = grade_run(agg.get("n_pass", 0), agg.get("n", 0))
+    rtps = agg.get("raw_tps") or 0
+    summary = {
+        "tag": tag,
+        "grade": grade,
+        "report": f"/report/{os.path.basename(out)}",
+        "suite": suite,
+        "raw_tps": round(rtps, 1),
+        "gen_tps": round(agg.get("gen_tps_median") or 0, 1),
+        "peak_tps": round(agg.get("gen_tps_peak") or agg.get("peak_tps") or 0, 1),
+        "p90": round(agg.get("p90_tps") or 0, 1),
+        "pass_rate": agg.get("pass_rate") or 0,
+        "eff_tps": round(agg.get("eff_tps") or rtps * (agg.get("pass_rate") or 0), 1),
+        "n_tasks": agg.get("n", 0),
+        "n_pass": agg.get("n_pass", 0),
+        "fail_tasks": [r.get("task", "?") for r in bag if not r.get("pass")],
+        "rows": [
+            {"task": r.get("task", "?"), "pass": bool(r.get("pass"))}
+            for r in sorted(bag, key=lambda r: r.get("i", 0))
+        ],
+        "hw_class": hwc,
+        "fit": klass,
+        "band": list(band[:2]) if band else None,
+    }
+    # batch bookkeeping: record result, then advance or finish
+    q = _state.get("queue") or []
+    if q:
+        with _state_lock:
+            _state.setdefault("q_done", []).append({
+                "tag": summary["tag"], "grade": summary.get("grade"),
+                "pass_rate": summary.get("pass_rate"),
+                "eff_tps": summary.get("eff_tps"),
+            })
+            idx = _state.get("queue_idx", 0) + 1
+            _state["queue_idx"] = idx
+        if idx < len(q):
+            _set(phase="queue_next", queue_idx=idx)
+            _worker_inner(which)  # same thread — sequential batch
+            return
+        # queue exhausted → full batch done
+        with _state_lock:
+            batch = list(_state.get("q_done") or [])
+        _set(phase="done", summary=summary, batch=batch)
+        return
+
+    _set(phase="done", summary=summary)
+    if config.get("open") is not False:
+        try:
+            webbrowser.open(f"file://{os.path.abspath(out)}")
+        except Exception:
+            pass
+
+
+def _start_run(which, queue=None):
     with _state_lock:
         if _state["running"]:
             return False
         _state["running"] = True
+        _state["queue"] = [dict(t) for t in queue] if queue else None
+        _state["q_done"] = []
+        _state["queue_idx"] = 0
     threading.Thread(target=_worker, args=(which,), daemon=True).start()
     return True
 
@@ -488,7 +522,11 @@ class Handler(BaseHTTPRequestHandler):
             if which not in ("quick", "full"):
                 self._json({"error": "which must be quick|full"}, 400)
                 return
-            ok = _start_run(which)
+            queue = body.get("queue") or []
+            if queue and which != "full":
+                self._json({"error": "batch queue requires full suite"}, 400)
+                return
+            ok = _start_run(which, queue=queue)
             self._json({"started": ok}, 200 if ok else 409)
 
         elif u.path == "/api/compare":
@@ -703,6 +741,34 @@ def find_port(start=8765, tries=12):
     return None
 
 
+_BANNER = [
+    r"                 _                 _    ",
+    r" __ _ __ __ _  _| |__  ___ _ _  __| |_  ",
+    r"/ _` / _/ _| || | '_ \/ -_) ' \/ _| ' \ ",
+    r"\__,_\__\__|\_,_|_.__/\___|_||_\__|_||_|",
+    r"                                        ",
+]
+_SPEED_LINES = [
+    "        __         ",
+    " -- ___/  \__      ",
+    "   /         \___  ",
+    "  _> O   O        >",
+]
+
+
+def _print_banner():
+    import sys, time
+    for line in _BANNER:
+        print("\033[2m" + line + "\033[0m")
+        sys.stdout.flush()
+        time.sleep(0.05)
+    for line in _SPEED_LINES:
+        print("\033[1m\033[32m" + line + "\033[0m")
+        sys.stdout.flush()
+        time.sleep(0.12)
+    print()
+
+
 def launch(open_browser=True):
     port = find_port()
     if not port:
@@ -710,8 +776,11 @@ def launch(open_browser=True):
         return 1
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     url = f"http://127.0.0.1:{port}/"
-    print()
-    print(f"  effbench {__version__} — web UI")
+    try:
+        _print_banner()
+    except Exception:
+        print()
+    print(f"  AccuBench {__version__} (effbench) — web UI")
     print(f"  serving at {url}   (Ctrl-C to stop)")
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()

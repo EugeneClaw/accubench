@@ -1,6 +1,7 @@
-"""effbench: quality-weighted benchmark for any OpenAI-compatible inference server.
+"""Compat shim for the v0.9.23 -> v1.0 alias window.
 
-effective t/s = raw t/s × task pass-rate
+Forwards to accubench and prints a one-shot stderr deprecation line.
 """
+from accubench import deprecate_alias_once  # noqa: F401
 
-__version__ = "0.9.22"
+deprecate_alias_once()

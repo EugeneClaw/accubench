@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Self-tests for effbench. Run: python3 tools/selftest.py  (no pytest needed)."""
+"""Self-tests for accubench. Run: python3 tools/selftest.py  (no pytest needed)."""
 import json
 import os
 import subprocess
@@ -9,9 +9,9 @@ import tempfile
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HERE)
 
-from effbench.verify import grade, extract_code, _norm  # noqa: E402
-from effbench.tasks import load_suite, validate_task  # noqa: E402
-from effbench.ledger import aggregate, append_record, load_ledger  # noqa: E402
+from accubench.verify import grade, extract_code, _norm  # noqa: E402
+from accubench.tasks import load_suite, validate_task  # noqa: E402
+from accubench.ledger import aggregate, append_record, load_ledger  # noqa: E402
 
 PASS = 0
 FAIL = 0
@@ -110,7 +110,7 @@ def t_ledger():
 
 
 def t_suite_of():
-    from effbench.ledger import suite_of
+    from accubench.ledger import suite_of
     check("suite full", suite_of([{"task": "code-fizzbang"}]) == "full")
     check("suite quick", suite_of([{"task": "q-fizzbang"}]) == "quick")
     check("suite mixed", suite_of([{"task": "q-x"}, {"task": "code-y"}]) == "mixed")
@@ -118,7 +118,7 @@ def t_suite_of():
 
 
 def t_fit_for():
-    from effbench.expectations import fit_for
+    from accubench.expectations import fit_for
     props = {"model_path": "Qwen3.8-27B-IQ4_XS.gguf", "build_info": "cuda"}
     full = [{"task": "code-fizzbang", "pass": True, "tok_s": 165.0, "wall_s": 1.0}]
     quick = [{"task": "q-fizzbang", "pass": True, "tok_s": 145.0, "wall_s": 1.0}]
@@ -135,7 +135,7 @@ def t_fit_for():
 
 
 def t_expected_pass():
-    from effbench.report import _expected_pass
+    from accubench.report import _expected_pass
     # tasks the 2026-08-17 reference soak failed 255/255
     check("expected fail known", _expected_pass("logic-soduko-unique") is False)
     check("expected fail quick", _expected_pass("q-wordcount") is False)
@@ -144,7 +144,7 @@ def t_expected_pass():
 
 
 def t_radar_tested_axes():
-    from effbench.report import _purpose_ladder
+    from accubench.report import _purpose_ladder
     # purpose with tasks: rung drawn, ranked, carries n
     html = _purpose_ladder({"code": {"n": 15, "n_pass": 15, "pass_rate": 1.0},
                             "extract": {"n": 3, "n_pass": 0, "pass_rate": 0.0}})
@@ -159,7 +159,7 @@ def t_radar_tested_axes():
 
 
 def t_fail_hints():
-    from effbench.explainer import fail_hint
+    from accubench.explainer import fail_hint
     h = fail_hint("reasoning", "hard")
     check("hint reasoning/hard", "--think" in h)
     check("hint fallback", "grader" in fail_hint("extract", "medium"))
@@ -167,7 +167,7 @@ def t_fail_hints():
 
 def t_capture_fields():
     """run_task() must record gen_tps/accept_pct from llama.cpp timings."""
-    from effbench.__main__ import run_task
+    from accubench.__main__ import run_task
     from types import SimpleNamespace
 
     class FakeClient:
@@ -196,14 +196,14 @@ def t_capture_fields():
 
 
 def t_cli():
-    r = subprocess.run([sys.executable, "-m", "effbench", "validate",
+    r = subprocess.run([sys.executable, "-m", "accubench", "validate",
                         "--suite", os.path.join(HERE, "suites")],
                        cwd=HERE, capture_output=True, text=True)
     check("cli validate green", r.returncode == 0, r.stdout[-300:])
 
 
 def main():
-    print("effbench selftest")
+    print("accubench selftest")
     for fn in (t_norm, t_extract, t_graders, t_tasks, t_ledger, t_suite_of,
                t_fit_for, t_expected_pass, t_radar_tested_axes, t_fail_hints,
                t_capture_fields, t_cli):

@@ -1,6 +1,6 @@
 """Interactive menu — the default UI after installation.
 
-Typing `effbench` with no arguments opens this menu. Everything a
+Typing `accubench` with no arguments opens this menu. Everything a
 non-technical user needs is reachable from here; flags still exist for
 scripting but nobody has to know them.
 """
@@ -12,6 +12,7 @@ from datetime import datetime
 
 from . import __version__
 from . import config
+from . import paths
 from . import wizard
 from .client import ServerClient
 from .ledger import load_ledger, aggregate, suite_of
@@ -19,9 +20,9 @@ from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
                            lookup, classify_fit, fit_for)
 
-DATA_DIR = os.path.expanduser("~/.effbench")
-REPORTS_DIR = os.path.join(DATA_DIR, "reports")
-LEDGER = os.path.join(DATA_DIR, "ledger.jsonl")
+DATA_DIR = paths.data_dir()
+REPORTS_DIR = paths.reports_dir()
+LEDGER = paths.ledger_path()
 
 CANDIDATE_URLS = [
     "http://localhost:11434",   # llama.cpp / Ollama

@@ -1,6 +1,6 @@
 """API-key storage for cloud endpoints.
 
-A pasted key lives in ~/.effbench/keys.json (0600, user-only) — the same
+A pasted key lives in ~/.accubench/keys.json (0600, user-only) — the same
 trust level as any local tool's config dir. Config.json and the ledger
 store only a reference, never the key itself. Users who prefer env vars
 can ignore this entirely: an unset key here simply falls back to
@@ -9,7 +9,11 @@ os.environ at run time.
 import json
 import os
 
-_KEYS_PATH = os.path.join(os.path.expanduser("~"), ".effbench", "keys.json")
+from . import paths
+
+
+def _keys_path():
+    return paths.keys_path()
 
 
 def save_key(endpoint_url, model, key):
@@ -21,13 +25,7 @@ def save_key(endpoint_url, model, key):
         data[ident] = key
     else:
         data.pop(ident, None)
-    os.makedirs(os.path.dirname(_KEYS_PATH), exist_ok=True)
-    with open(_KEYS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f)
-    try:
-        os.chmod(_KEYS_PATH, 0o600)
-    except OSError:
-        pass
+    _flush(data)
     return True
 
 
@@ -68,7 +66,7 @@ def _ident(url, model=None):
 
 def _load():
     try:
-        with open(_KEYS_PATH, encoding="utf-8") as f:
+        with open(_keys_path(), encoding="utf-8") as f:
             v = json.load(f)
             if not isinstance(v, dict):
                 return {}
@@ -90,19 +88,18 @@ def _load():
 
 
 def _flush(data):
-    os.makedirs(os.path.dirname(_KEYS_PATH), exist_ok=True)
-    with open(_KEYS_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f)
+    """Atomic, umask-safe write of the keystore. File mode is 0600 from the
+    moment the inode is created (no umask window between open and chmod)."""
+    path = _keys_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     try:
-        os.chmod(_KEYS_PATH, 0o600)
-    except OSError:
-        pass
-
-
-def clear_all():
-    """Remove every stored key. Returns how many were removed."""
-    data = _load()
-    n = len(data)
-    if n:
-        _flush({})
-    return n
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+    except Exception:
+        # Don't leave a half-written file behind on the user's disk
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+        raise

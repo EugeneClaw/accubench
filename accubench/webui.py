@@ -733,7 +733,7 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 pass
             if body.get("keys"):
-                removed["keys"] = keystore.clear_all()
+                removed["keys"] = keystore.wipe()
             self._json({"ok": True, **removed})
 
         elif u.path == "/api/shutdown":

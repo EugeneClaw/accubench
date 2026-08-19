@@ -1,13 +1,15 @@
-"""Persistent user config stored at ~/.effbench/config.json.
+"""Persistent user config stored at ~/.accubench/config.json.
 
 All customisations go here — no command-line defaults for things like
 the server URL that vary per user. The installer doesn't write to this
-file; only the first run of `effbench go` or `effbench setup` does.
+file; only the first run of `accubench go` or `accubench setup` does.
 """
 import json
 import os
 
-PATH = os.path.expanduser("~/.effbench/config.json")
+from . import paths
+
+PATH = paths.config_path()
 
 DEFAULTS = {
     # Server URL. None means: ask on every run, don't assume.

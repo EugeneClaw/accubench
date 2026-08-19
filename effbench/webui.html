@@ -542,7 +542,9 @@ async function api(path, opts) {
   const t = setTimeout(() => ctl.abort(new Error('request timed out')), 60000);
   try {
     const r = await fetch(path, Object.assign({ signal: ctl.signal }, opts || {}));
-    return await r.json();
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || ('HTTP ' + r.status));
+    return d;
   } finally { clearTimeout(t); }
 }
 
@@ -633,13 +635,13 @@ async function fillBatchFromProvider() {
     models = r.models || [];
     if (!models.length) note = 'provider returned an empty list';
   } catch (e) {
-    note = 'provider list unavailable (' + (e && e.error ? e.error : 'network') + ')';
+    note = 'provider list unavailable (' + ((e && (e.error || e.message)) || 'network') + ')';
   }
   // fallback + supplement: models we already know from past runs and the saved target
   let known = [cloud.model];
   try {
     const lb = await api('/api/leaderboard');
-    known = known.concat((lb.entries || []).filter(e => e.where === 'cloud').map(e => e.model.replace(/ \(quick\)$/, '')));
+    known = known.concat((lb.entries || []).filter(e => e.where === 'cloud').map(e => (e.model || e.label || '').replace(/ \(quick\)$/, '')));
   } catch (e) { /* best-effort */ }
   const all = [...new Set([...models, ...known])].filter(Boolean);
   if (!all.length) { if (prog) prog.textContent = 'no models available — save a cloud target first'; return; }
@@ -1059,6 +1061,7 @@ function cloudSelChanged() {
     document.getElementById('cfg-cloud-url').value = CLOUD_PRESETS[v].url;
     document.getElementById('cfg-cloud-keyenv').value = CLOUD_PRESETS[v].keyenv;
   }
+  refreshModelList();   // picker works from the saved key, not just a pasted one
 }
 function toggleKeyVis() {
   const inp = document.getElementById('cfg-cloud-key');
@@ -1106,17 +1109,16 @@ async function refreshModelList() {
   const model = document.getElementById('cfg-cloud-model').value.trim();
   const key = document.getElementById('cfg-cloud-key').value.trim();
   const dl = document.getElementById('cloud-model-list');
-  if (!url || !key) { dl.innerHTML = ''; return; }
-  if (_modelListCache[url + '::' + key.slice(-4)]) {
-    dl.innerHTML = _modelListCache[url + '::' + key.slice(-4)];
-    return;
-  }
+  if (!url) { dl.innerHTML = ''; return; }
+  // key optional: pasted key wins, else the server falls back to the saved key
+  const ck = url + '::' + (key ? key.slice(-4) : 'saved');
+  if (_modelListCache[ck]) { dl.innerHTML = _modelListCache[ck]; return; }
   try {
     const q = 'url=' + encodeURIComponent(url) + '&model=' + encodeURIComponent(model) +
-              '&key=' + encodeURIComponent(key);
+              (key ? '&key=' + encodeURIComponent(key) : '');
     const r = await api('/api/cloud-models?' + q);
     const opts = (r.models || []).map(m => '<option value="' + m.replace(/"/g, '&quot;') + '">').join('');
-    _modelListCache[url + '::' + key.slice(-4)] = opts;
+    _modelListCache[ck] = opts;
     dl.innerHTML = opts;
   } catch (e) { /* list is best-effort; typing still works */ }
 }
@@ -1262,6 +1264,7 @@ async function loadConfig() {
   }
   await refreshTargetSummary();
   if (!c.provider && !s.config.url) openWiz();   // blank config → wizard greets you
+  return s.config;   // callers (batch fill etc.) need the config object
 }
 
 function collectCloudCfg() {

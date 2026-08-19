@@ -483,7 +483,7 @@ class Handler(BaseHTTPRequestHandler):
             model = (q.get("model") or [""])[0].strip()
             kenv = (q.get("key_env") or [""])[0].strip()
             pasted = (q.get("key") or [""])[0].strip()
-            if not curl or not is_cloud_url(curl):
+            if not curl or not (curl.startswith("http://") or curl.startswith("https://")):
                 self._json({"error": "not a cloud URL"}, 400)
                 return
             key = pasted or keystore.load_key(curl)

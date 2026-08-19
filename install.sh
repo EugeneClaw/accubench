@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# effbench one-line installer
+# AccuBench one-line installer
 # Usage:   curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/install.sh | bash
 #          (release-asset URL — not raw.githubusercontent, which rate-limits (429) under load)
 # Result:  /usr/local/bin/effbench ready to run, no Python venv needed.
@@ -11,7 +11,7 @@ BIN="$PREFIX/bin"
 SRC="$PREFIX/share/effbench"
 
 echo ""
-echo "  effbench installer"
+echo "  AccuBench installer"
 echo "  ───────────────────"
 echo ""
 

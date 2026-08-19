@@ -1,4 +1,4 @@
-# effbench
+# AccuBench
 
 **Quality-weighted benchmark for any local AI server.** Runs your model through real tasks and tells you **how fast** *and* **how often it gets it right**.
 
@@ -11,7 +11,7 @@ Local AI servers are fast. The question isn't just *"how fast?"* — it's *"how 
 | your usual setup | 167 | 89% | **148.8** |
 | a faster quant | 180 | 60% | **108.0** |
 
-The faster quant is 8% faster and 33% worse. Raw benchmarks crown it; effbench doesn't.
+The faster quant is 8% faster and 33% worse. Raw benchmarks crown it; AccuBench doesn't.
 
 ---
 
@@ -46,7 +46,7 @@ Typing `effbench` any time re-opens the menu:
    q) quit
 ```
 
-Your results, settings and saved reports live in `~/.effbench/` — not scattered in whatever folder you ran the command from.
+Your results, settings and saved reports live in `~/.effbench/` (soon `~/.accubench/`) — not scattered in whatever folder you ran the command from.
 
 **Uninstall** is one line too:
 

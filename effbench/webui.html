@@ -285,8 +285,8 @@
 <body>
 <div class="wrap">
   <div class="mast">
-    <div class="brand">eff<em>bench</em> <span class="ver" id="ver"></span></div>
-    <div class="mast-right" id="mast-status">local only</div>
+    <div class="brand">Accu<em>Bench</em> <span class="ver" id="ver"></span></div>
+    <div class="mast-right" id="mast-status">local</div>
   </div>
   <p class="tagline">how fast — and how accurate — is your local AI?</p>
 
@@ -442,14 +442,14 @@
     <span id="cfg-msg" class="hint"></span>
   </div>
 
-  <p class="muted">effbench runs a private server on this machine only (127.0.0.1) — nothing leaves your computer.</p>
+  <p class="muted">The benchmark server runs locally (127.0.0.1). Cloud runs send tasks to the provider you configure.</p>
 </div>
 
 
 <!-- setup wizard modal -->
 <div class="wiz-overlay" id="wiz-overlay">
   <div class="wiz" role="dialog" aria-modal="true" aria-label="Setup wizard">
-    <div class="wiz-kicker">effbench setup</div>
+    <div class="wiz-kicker">AccuBench setup</div>
 
     <!-- step 1: the fork -->
     <div id="wiz-step-1">
@@ -513,7 +513,7 @@
       <details id="cloud-advanced" style="display:none; margin-top:4px;">
         <summary style="cursor:pointer; font-size:11px; color:var(--ink3, #9AA6B5);">advanced: use an environment variable instead</summary>
         <input type="text" id="cfg-cloud-keyenv" placeholder="env var name, e.g. GLM_API_KEY" style="width:340px; margin-top:6px;">
-        <div class="hint">For shell users: the NAME of the env var holding the key (effbench reads it at run time; nothing stored). Ignored when a pasted key exists.</div>
+        <div class="hint">For shell users: the NAME of the env var holding the key (read at run time; nothing stored). Ignored when a pasted key exists.</div>
       </details>
       <button class="btn" id="cloud-test-btn" style="display:none; margin-top:6px;" onclick="testCloudConn()">⚡ Test connection</button>
       <span id="cloud-test-result"></span>
@@ -697,7 +697,7 @@ function renderState(s) {
   document.getElementById('btn-full').disabled = busy;
   document.getElementById('btn-batch').disabled = busy;
   showStop(['detecting', 'running', 'queue_next'].includes(s.phase));
-  setMast(busy ? 'running' : 'local only');
+  setMast(busy ? 'running' : 'local');
 
   if (s.phase === 'queue_next') {
     setRunStatus('batch ' + ((s.queue_idx || 0) + 1) + '/' + (s.queue_len || '?') +

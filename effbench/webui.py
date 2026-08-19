@@ -782,6 +782,18 @@ def launch(open_browser=True):
         print("effbench: no free port found (8765-8776) — close something and retry.")
         return 1
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+
+    # browsers abort in-flight polls on refresh/close — not errors; stay quiet
+    _orig_handle_error = srv.handle_error
+
+    def _quiet_error(request, client_address):
+        import sys
+        et = sys.exc_info()[0]
+        if et is None or issubclass(et, (ConnectionAbortedError, ConnectionResetError, BrokenPipeError)):
+            return
+        _orig_handle_error(request, client_address)
+
+    srv.handle_error = _quiet_error
     url = f"http://127.0.0.1:{port}/"
     try:
         _print_banner()

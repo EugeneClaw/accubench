@@ -1,4 +1,4 @@
-# effbench installer for Windows PowerShell
+# AccuBench installer for Windows PowerShell
 # Usage:   irm https://github.com/EugeneClaw/effbench/releases/latest/download/install.ps1 | iex
 #          (release-asset URL — not raw.githubusercontent, which rate-limits (429) under load)
 # Result:  $env:LOCALAPPDATA\effbench\bin\effbench.cmd on PATH.
@@ -10,7 +10,7 @@ $Bin     = Join-Path $Prefix "bin"
 $Src     = Join-Path $Prefix "share\effbench"
 
 Write-Host ""
-Write-Host "  effbench installer"
+Write-Host "  AccuBench installer"
 Write-Host "  ------------------"
 Write-Host ""
 

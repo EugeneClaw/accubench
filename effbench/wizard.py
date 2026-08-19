@@ -106,7 +106,7 @@ def _make_report(tag, ledger, props, out_path):
     # is fair to short tasks. Fallback to observed t/s when /props is opaque.
     hwc, band, klass, suite = fit_for(recs, props)
     html_doc = render_report([(tag, recs, band, klass, hwc)], props=props,
-                             title=f"effbench · {tag}")
+                             title=f"AccuBench · {tag}")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html_doc)
     return hwc, klass, band
@@ -115,7 +115,7 @@ def _make_report(tag, ledger, props, out_path):
 def go(args):
     """The wizard. URL defaults to the local MAIN door."""
     print()
-    print(f"  effbench {__version__}  —  the simple one")
+    print(f"  AccuBench {__version__}  —  the simple one")
     print(f"  ╭──────────────────────────────────────────╮")
     print(f"  │  measures effective t/s of your server   │")
     print(f"  │  = how fast AND how often it gets it right │")

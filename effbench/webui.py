@@ -279,6 +279,18 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     # -- helpers
+    def _local_origin_only(self):
+        """Reject cross-site requests: any website can fire blind POSTs at a
+        localhost server. We can't read their responses, but /api/run would
+        spend tokens and /api/config would swap targets. Same-origin pages
+        send Sec-Fetch-Site: same-origin (modern browsers) or no header at
+        all (curl, Python, older browsers) — both pass; anything else is a
+        cross-site probe and gets dropped."""
+        sfs = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+        if sfs in ("same-origin", "same-site", "none", ""):
+            return True
+        return False
+
     def _json(self, obj, code=200):
         body = json.dumps(obj).encode("utf-8")
         self.send_response(code)
@@ -312,6 +324,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urlparse(self.path)
         q = parse_qs(u.query)
+        if u.path.startswith("/api/") and not self._local_origin_only():
+            self._json({"error": "cross-site request rejected"}, 403)
+            return
 
         if u.path in ("/", "/index.html"):
             self._file(os.path.join(HERE, "webui.html"), "text/html; charset=utf-8")
@@ -520,6 +535,9 @@ class Handler(BaseHTTPRequestHandler):
     # -- POST
     def do_POST(self):
         u = urlparse(self.path)
+        if not self._local_origin_only():
+            self._json({"error": "cross-site request rejected"}, 403)
+            return
         if u.path == "/api/stop":
             if _state.get("phase") not in ("running", "detecting"):
                 self._json({"ok": False, "error": "no run in progress"}, 409)
@@ -673,20 +691,6 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "removed": removed})
             except OSError as e:
                 self._json({"ok": False, "error": str(e)}, 500)
-            return
-
-        elif u.path == "/api/key-reveal":
-            body = self._body()
-            url = (body.get("url") or "").strip()
-            model = (body.get("model") or "").strip()
-            if not url:
-                self._json({"ok": False, "error": "url required"}, 400)
-                return
-                key = keystore.load_key(url)
-            if key:
-                self._json({"ok": True, "key": key, "len": len(key)})
-            else:
-                self._json({"ok": False, "error": "no key stored for this provider"})
             return
 
         elif u.path == "/api/config":

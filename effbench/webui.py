@@ -8,6 +8,7 @@ the same front end that produced them.
 
 The server binds 127.0.0.1 only — nothing on your network can reach it.
 """
+import glob as _g
 import json
 import os
 import threading
@@ -23,6 +24,7 @@ from .ledger import append_record, load_ledger, aggregate, suite_of
 from .report import render_report
 from .expectations import (detect_hw_class, detect_model_arch, detect_quant,
                            lookup, classify_fit)
+from .__init__ import __version__ as __v__
 from .menu import (DATA_DIR, REPORTS_DIR, LEDGER, CANDIDATE_URLS,
                    _suite_path, _tags_summary)
 
@@ -86,7 +88,7 @@ def _worker(which):
             # cloud run: no local server needed
             from .cloud import CloudClient
             from . import keystore
-            key = keystore.load_key(cloud["url"], cloud["model"])
+            key = keystore.load_key(cloud["url"])
             client = CloudClient(cloud["url"], cloud["model"],
                                  cloud.get("key_env", ""),
                                  cloud.get("name", cloud.get("provider", "cloud")),
@@ -295,6 +297,24 @@ class Handler(BaseHTTPRequestHandler):
         elif u.path == "/api/tags":
             self._json({"tags": _tags_summary()})
 
+        if u.path == "/api/export":
+            recs = load_ledger(LEDGER)
+            names = {}
+            for f in _g.glob(os.path.join(REPORTS_DIR, "*.name")):
+                with open(f, encoding="utf-8") as fh:
+                    names[os.path.basename(f)[:-5]] = fh.read().strip()
+            payload = {"format": "effbench-export", "version": __v__,
+                       "names": names, "records": recs}
+            body = json.dumps(payload).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Disposition",
+                             'attachment; filename="effbench-results.json"')
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
+
         elif u.path == "/api/leaderboard":
             import re as _re
             tags = _tags_summary()
@@ -356,7 +376,6 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         elif u.path == "/api/reports":
-            import glob as _g
             reps = sorted(_g.glob(os.path.join(REPORTS_DIR, "*.html")),
                           key=os.path.getmtime, reverse=True)
             out = []
@@ -419,7 +438,7 @@ class Handler(BaseHTTPRequestHandler):
             if not curl or not is_cloud_url(curl):
                 self._json({"error": "not a cloud URL"}, 400)
                 return
-            key = pasted or keystore.load_key(curl, model)
+            key = pasted or keystore.load_key(curl)
             if not key:
                 self._json({"error": "no key — paste it in the key field first"}, 400)
                 return
@@ -429,6 +448,14 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"models": models})
             except Exception as e:
                 self._json({"error": (type(e).__name__ + ": " + str(e))[:200]}, 502)
+
+        elif u.path == "/api/key-status":
+            u_ = parse_qs(u.query)
+            kurl = (u_.get("url") or [""])[0]
+            if not kurl:
+                self._json({"saved": False}, 400)
+                return
+            self._json({"saved": bool(keystore.load_key(kurl))})
 
         elif u.path == "/api/keys":
             from . import keystore
@@ -492,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": False, "detail": "model id is empty"})
                 return
             # key resolution: pasted > saved > env var
-            key = pasted or keystore.load_key(curl, model) or (os.environ.get(kenv) if kenv else None)
+            key = pasted or keystore.load_key(curl) or (os.environ.get(kenv) if kenv else None)
             if not key:
                 self._json({"ok": False,
                             "detail": "no API key — paste one in the key field, or set the env var"})
@@ -525,6 +552,62 @@ class Handler(BaseHTTPRequestHandler):
             n = keystore.wipe()
             self._json({"ok": True, "removed": n})
 
+        elif u.path == "/api/import":
+            body = self._body()
+            raw = (body.get("data") or "").strip()
+            if not raw:
+                self._json({"ok": False, "error": "empty import"}, 400)
+                return
+            try:
+                doc = json.loads(raw)
+                if isinstance(doc, dict) and doc.get("format") == "effbench-export":
+                    incoming, in_names = doc.get("records", []), doc.get("names", {})
+                else:
+                    raise ValueError
+            except ValueError:
+                incoming = []
+                for line in raw.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        r = json.loads(line)
+                        if isinstance(r, dict) and r.get("tag"):
+                            incoming.append(r)
+                    except ValueError:
+                        pass
+                in_names = {}
+            if not incoming:
+                self._json({"ok": False, "error": "no records found"}, 400)
+                return
+            existing = {(r.get("run_id"), r.get("task"), r.get("run_idx"), r.get("tag"))
+                        for r in load_ledger(LEDGER)}
+            added = 0
+            new_tags = set()
+            for r in incoming:
+                k = (r.get("run_id"), r.get("task"), r.get("run_idx"), r.get("tag"))
+                if k in existing:
+                    continue
+                append_record(LEDGER, r)
+                existing.add(k)
+                added += 1
+                new_tags.add(r["tag"])
+            reports = 0
+            os.makedirs(REPORTS_DIR, exist_ok=True)
+            for tag in sorted(new_tags):
+                try:
+                    wizard._make_report(tag, LEDGER, None,
+                                        os.path.join(REPORTS_DIR, f"{tag}.html"))
+                    reports += 1
+                except Exception:
+                    pass
+                if in_names.get(tag):
+                    with open(os.path.join(REPORTS_DIR, f"{tag}.name"), "w",
+                              encoding="utf-8") as fh:
+                        fh.write(in_names[tag])
+            self._json({"ok": True, "added": added, "skipped": len(incoming) - added,
+                        "reports": reports})
+
         elif u.path == "/api/report-delete":
             body = self._body()
             name = os.path.basename(body.get("name") or "")
@@ -552,11 +635,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": False, "error": "url required"}, 400)
                 return
             from . import keystore
-            key = keystore.load_key(url, model)
+            key = keystore.load_key(url)
             if key:
                 self._json({"ok": True, "key": key, "len": len(key)})
             else:
-                self._json({"ok": False, "error": "no key stored for this url/model"})
+                self._json({"ok": False, "error": "no key stored for this provider"})
             return
 
         elif u.path == "/api/config":

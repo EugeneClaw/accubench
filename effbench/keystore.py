@@ -13,9 +13,10 @@ _KEYS_PATH = os.path.join(os.path.expanduser("~"), ".effbench", "keys.json")
 
 
 def save_key(endpoint_url, model, key):
-    """Store key for this endpoint+model. Empty key removes the entry."""
+    """Store key for this endpoint (provider-scoped; model ignored).
+    Empty key removes the entry."""
     data = _load()
-    ident = _ident(endpoint_url, model)
+    ident = _ident(endpoint_url)
     if key:
         data[ident] = key
     else:
@@ -30,19 +31,19 @@ def save_key(endpoint_url, model, key):
     return True
 
 
-def load_key(endpoint_url, model):
-    return _load().get(_ident(endpoint_url, model), "")
+def load_key(endpoint_url, model=None):
+    return _load().get(_ident(endpoint_url), "")
 
 
 def list_idents():
-    """All stored identities (url::model), for the settings page."""
+    """All stored identities (provider URLs), for the settings page."""
     return sorted(_load().keys())
 
 
-def remove_key(endpoint_url, model):
-    """Remove one stored key."""
+def remove_key(endpoint_url, model=None):
+    """Remove one stored key (provider-scoped)."""
     data = _load()
-    ident = _ident(endpoint_url, model)
+    ident = _ident(endpoint_url)
     if ident in data:
         del data[ident]
         _flush(data)
@@ -59,15 +60,31 @@ def wipe():
     return n
 
 
-def _ident(url, model):
-    return (url or "").rstrip("/") + "::" + (model or "")
+def _ident(url, model=None):
+    """Provider-scoped ident: bare URL. Legacy 'url::model' entries on disk
+    are migrated to this form on load."""
+    return (url or "").rstrip("/")
 
 
 def _load():
     try:
         with open(_KEYS_PATH, encoding="utf-8") as f:
             v = json.load(f)
-            return v if isinstance(v, dict) else {}
+            if not isinstance(v, dict):
+                return {}
+            # migrate legacy "url::model" idents → provider-scoped bare URLs
+            migrated = False
+            for k in list(v.keys()):
+                if "::" in k:
+                    url = k.split("::", 1)[0]
+                    if url not in v:
+                        v[url] = v.pop(k)
+                    else:
+                        v.pop(k)  # provider entry already exists; drop dupe
+                    migrated = True
+            if migrated:
+                _flush(v)
+            return v
     except (OSError, ValueError):
         return {}
 

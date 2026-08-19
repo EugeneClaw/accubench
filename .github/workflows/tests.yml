@@ -20,9 +20,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Validate quick suite
-        run: python3 -m effbench validate --suite suites/quick.json
+        run: python3 -m accubench validate --suite suites/quick.json
       - name: Validate full suite
-        run: python3 -m effbench validate --suite suites/
+        run: python3 -m accubench validate --suite suites/
       - name: Selftest
         run: python3 tools/selftest.py
       - name: Security scan (no LAN IPs / personal info)

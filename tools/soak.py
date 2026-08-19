@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Overnight soak: loop effbench against a server, forever (or --hours N).
+"""Overnight soak: loop accubench against a server, forever (or --hours N).
 
 Each cycle: run the full suite, tag soak-N, append heartbeat with /props
 snapshot. Survives server restarts (waits for /health between cycles).
 Results land in soak-results.jsonl; render anytime:
-    python3 -m effbench report --ledger soak-results.jsonl --out soak-report.html
+    python3 -m accubench report --ledger soak-results.jsonl --out soak-report.html
 """
 import argparse
 import os
@@ -53,7 +53,7 @@ def heartbeat(path, url, note=""):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--url", default=None,
-                   help="server URL (default: $EFFBENCH_URL or http://localhost:11434)")
+                   help="server URL (default: $ACCUBENCH_URL or http://localhost:11434)")
     p.add_argument("--suite", default=f"{HERE}/suites")
     p.add_argument("--ledger", default=f"{HERE}/soak-results.jsonl")
     p.add_argument("--hours", type=float, default=0, help="0 = forever")
@@ -74,14 +74,14 @@ def main():
                 print("  server never recovered within 30min; heartbeat logged", flush=True)
                 time.sleep(60)
                 continue
-        cmd = [sys.executable, "-m", "effbench", "run",
+        cmd = [sys.executable, "-m", "accubench", "run",
                "--url", args.url, "--suite", args.suite,
                "--ledger", args.ledger, "--tag", f"soak-{cycle:03d}"]
         t0 = time.time()
         r = subprocess.run(cmd, cwd=HERE, capture_output=True, text=True)
         dt = time.time() - t0
         ok = r.returncode == 0
-        print(f"  effbench {'OK' if ok else 'FAILED'} in {dt:.0f}s", flush=True)
+        print(f"  accubench {'OK' if ok else 'FAILED'} in {dt:.0f}s", flush=True)
         if not ok:
             print("  stderr tail:", r.stderr.strip()[-500:], flush=True)
             open(f"{HERE}/soak-errors.log", "a").write(

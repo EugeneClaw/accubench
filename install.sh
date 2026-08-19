@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # AccuBench one-line installer
-# Usage:   curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/install.sh | bash
+# Usage:   curl -fsSL https://github.com/EugeneClaw/accubench/releases/latest/download/install.sh | bash
 #          (release-asset URL — not raw.githubusercontent, which rate-limits (429) under load)
-# Result:  /usr/local/bin/effbench ready to run, no Python venv needed.
+# Result:  /usr/local/bin/accubench ready to run, no Python venv needed.
 set -euo pipefail
 
-REPO="https://github.com/EugeneClaw/effbench.git"
-PREFIX="${EFFBEN_PREFIX:-$HOME/.local}"
+REPO="https://github.com/EugeneClaw/accubench.git"
+PREFIX="${ACCUBENCH_PREFIX:-$HOME/.local}"
 BIN="$PREFIX/bin"
-SRC="$PREFIX/share/effbench"
+SRC="$PREFIX/share/accubench"
 
 echo ""
 echo "  AccuBench installer"
@@ -46,17 +46,25 @@ else
   git clone --depth 1 --quiet "$REPO" "$SRC"
 fi
 
-# 4. Write the launcher.
+# 4. Write the launchers. PRIMARY is accubench; effbench is the
+#    alias-window shim that forwards with a deprecation line.
+cat > "$BIN/accubench" <<EOF
+#!/usr/bin/env bash
+# accubench launcher — runs the python module from the install dir.
+export PYTHONPATH="$SRC\${PYTHONPATH:+:\$PYTHONPATH}"
+exec python3 -m accubench "\$@"
+EOF
+chmod +x "$BIN/accubench"
+
 cat > "$BIN/effbench" <<EOF
 #!/usr/bin/env bash
-# effbench launcher — runs the python module from the install dir.
-EFFBEN_SRC="$SRC"
-export PYTHONPATH="\$EFFBEN_SRC\${PYTHONPATH:+:\$PYTHONPATH}"
+# effbench alias for accubench — removed in v1.0. Forwards to accubench.
+export PYTHONPATH="$SRC\${PYTHONPATH:+:\$PYTHONPATH}"
 exec python3 -m effbench "\$@"
 EOF
 chmod +x "$BIN/effbench"
 
-echo "  ✓ installed: $BIN/effbench"
+echo "  ✓ installed: $BIN/accubench (primary), $BIN/effbench (alias, until v1.0)"
 
 # 5. PATH hint if needed.
 case ":$PATH:" in
@@ -68,24 +76,26 @@ case ":$PATH:" in
     echo "    Add this to your ~/.zshrc or ~/.bashrc:"
     echo "      export PATH=\"$BIN:\$PATH\""
     echo "    Then restart the terminal (or: source ~/.zshrc)"
-    echo "    Or run directly: $BIN/effbench"
+    echo "    Or run directly: $BIN/accubench"
     ;;
 esac
 
 # 6. Double-clickable app (macOS .app wrapper / Linux .desktop).
 #    Start = double-click. Stop = close the window. Nothing backgrounded.
+#    User-visible names stay effbench until v1.0 (no duplicate Launchpad
+#    entry, no second Windows shortcut).
 case "$(uname)" in
   Darwin)
     APP="$HOME/Applications/effbench.app"
     mkdir -p "$APP/Contents/MacOS"
     cat > "$APP/Contents/MacOS/effbench" <<EOF
 #!/usr/bin/env bash
-# effbench UI — close this window to stop.
+# accubench UI — close this window to stop.
 cd "\$HOME"
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 export PYTHONPATH="$SRC\${PYTHONPATH:+:\$PYTHONPATH}"
-echo "effbench — close this window to stop"
-exec python3 -m effbench ui
+echo "accubench — close this window to stop"
+exec python3 -m accubench ui
 EOF
     chmod +x "$APP/Contents/MacOS/effbench"
     cat > "$APP/Contents/Info.plist" <<'EOF'
@@ -111,7 +121,7 @@ EOF
 Type=Application
 Name=effbench
 Comment=Local AI benchmark — close window to stop
-Exec=$BIN/effbench ui
+Exec=$BIN/accubench ui
 Terminal=true
 Categories=Utility;
 EOF
@@ -121,6 +131,6 @@ EOF
 esac
 
 echo ""
-echo "  installed. starting effbench..."
+echo "  installed. starting accubench..."
 echo ""
-exec "$BIN/effbench"
+exec "$BIN/accubench"

@@ -1,13 +1,13 @@
 # AccuBench installer for Windows PowerShell
-# Usage:   irm https://github.com/EugeneClaw/effbench/releases/latest/download/install.ps1 | iex
+# Usage:   irm https://github.com/EugeneClaw/accubench/releases/latest/download/install.ps1 | iex
 #          (release-asset URL — not raw.githubusercontent, which rate-limits (429) under load)
-# Result:  $env:LOCALAPPDATA\effbench\bin\effbench.cmd on PATH.
+# Result:  $env:LOCALAPPDATA\accubench\bin\accubench.cmd on PATH.
 $ErrorActionPreference = "Stop"
 
-$Repo    = "https://github.com/EugeneClaw/effbench.git"
-$Prefix  = if ($env:EFFBEN_PREFIX) { $env:EFFBEN_PREFIX } else { Join-Path $env:LOCALAPPDATA "effbench" }
+$Repo    = "https://github.com/EugeneClaw/accubench.git"
+$Prefix  = if ($env:ACCUBENCH_PREFIX) { $env:ACCUBENCH_PREFIX } else { Join-Path $env:LOCALAPPDATA "accubench" }
 $Bin     = Join-Path $Prefix "bin"
-$Src     = Join-Path $Prefix "share\effbench"
+$Src     = Join-Path $Prefix "share\accubench"
 
 Write-Host ""
 Write-Host "  AccuBench installer"
@@ -53,19 +53,29 @@ if (Test-Path (Join-Path $Src ".git")) {
   git clone --depth 1 --quiet $Repo $Src
 }
 
-# 4. Launcher script — runs the module properly (relative imports work).
-$launcher = Join-Path $Bin "effbench.cmd"
+# 4. Launcher scripts — PRIMARY is accubench; effbench is the alias-window
+#    shim that forwards with a deprecation line. Removed in v1.0.
+$launcher = Join-Path $Bin "accubench.cmd"
 @"
 @echo off
-REM effbench launcher — UTF-8 mode so reports/labels never crash on cp1252.
+REM accubench launcher — UTF-8 mode so reports/labels never crash on cp1252.
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
-set "EFFBEN_SRC=$Src"
 set "PYTHONPATH=$Src;%PYTHONPATH%"
-$py -m effbench %*
+$py -m accubench %*
 "@ | Out-File -Encoding ASCII $launcher
 
-Write-Host "  OK installed: $launcher"
+$aliasLauncher = Join-Path $Bin "effbench.cmd"
+@"
+@echo off
+REM effbench alias for accubench — removed in v1.0.
+set "PYTHONUTF8=1"
+set "PYTHONIOENCODING=utf-8"
+set "PYTHONPATH=$Src;%PYTHONPATH%"
+$py -m effbench %*
+"@ | Out-File -Encoding ASCII $aliasLauncher
+
+Write-Host "  OK installed: $launcher (primary), $aliasLauncher (alias, until v1.0)"
 
 # 5. PATH.
 $pathEnv = [Environment]::GetEnvironmentVariable("PATH", "User")
@@ -76,17 +86,18 @@ if ($pathEnv -notlike "*$Bin*") {
   $env:PATH = "$env:PATH;$Bin"
 }
 
-# 6. Desktop + Start Menu shortcuts ("effbench" — double-click to start,
-#    close the window to stop; nothing runs in the background).
-$uiLauncher = Join-Path $Bin "effbench-ui.cmd"
+# 6. Desktop + Start Menu shortcuts ("effbench" — kept until v1.0 so
+#    existing installs don't grow a duplicate). Their embedded -m
+#    invocation switches to accubench (internal; works via the alias
+#    package even if the .cmd is missing).
+$uiLauncher = Join-Path $Bin "accubench-ui.cmd"
 @"
 @echo off
-title effbench - close this window to stop
+title accubench - close this window to stop
 set "PYTHONUTF8=1"
 set "PYTHONIOENCODING=utf-8"
-set "EFFBEN_SRC=$Src"
 set "PYTHONPATH=$Src;%PYTHONPATH%"
-$py -m effbench ui
+$py -m accubench ui
 pause
 "@ | Out-File -Encoding ASCII $uiLauncher
 
@@ -102,9 +113,9 @@ foreach ($shortcutHome in @([Environment]::GetFolderPath("Desktop"),
   $sc.Description = "AccuBench — local AI benchmark (close window to stop)"
   $sc.Save()
 }
-Write-Host "  OK shortcut: Desktop + Start Menu -> effbench"
+Write-Host "  OK shortcut: Desktop + Start Menu -> effbench (label kept until v1.0)"
 
 Write-Host ""
-Write-Host "  done. starting effbench..."
+Write-Host "  done. starting accubench..."
 Write-Host ""
 & $launcher

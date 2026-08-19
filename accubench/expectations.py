@@ -39,7 +39,7 @@ def detect_hw_class(props, observed_raw_tps=None):
     Returns one of: phone_laptop, desktop_gpu_mid, desktop_gpu_high,
                     workstation, dataclass.
 
-    Note: thresholds here are calibrated against the FULL effbench suite
+    Note: thresholds here are calibrated against the FULL accubench suite
     (36 tasks, ~167 t/s for RTX 5090 + Qwen3.8-27B IQ4_XS). Quick suite
     medians are systematically lower (~70 t/s on the same machine) because
     reasoning tasks drag the median down. If you only ran the quick suite,

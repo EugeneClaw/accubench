@@ -1,14 +1,94 @@
+# Changelog
+
+All notable changes to accubench, newest first.
+
+## 0.9.23 — 2026-08-19
+
+Rename migration — module, CLI, and data directory renamed to accubench; effbench stays a working alias until v1.0; changelog rebuilt; README install commands corrected.
+
+- **Module rename**: `effbench/` package → `accubench/`. Single import surface everywhere; CLI invocation is `python3 -m accubench`.
+- **Data directory**: `~/.effbench/` → `~/.accubench/`. One-shot migration on first run after upgrade: copy to a temp dir next to the target, stamp `.migrated` inside, atomic rename into place. Old `~/.effbench/` is left untouched for instant rollback.
+- **Single data-dir authority** (QR R1): new `accubench/paths.py` centralises resolution; menu, config, and keystore consume it — three independent resolvers gone. Selftest asserts all three agree at runtime.
+- **Alias window** (v0.9.23 → v1.0): old command `effbench` still works. A 2-line compat package forwards to accubench and prints a one-shot stderr deprecation line (never stdout, never UI), with sunset date included. Old `.app`/`.lnk`/`.desktop` wrappers keep working without churn.
+- **Installers write both names**: `accubench` (primary) + `effbench` shim, until v1.0. User-visible labels (`.app` bundle name, bundle id `com.eugeneclaw.effbench`, `.lnk` label, `.desktop` Name) stay `effbench` until v1.0 to avoid duplicate Launchpad entries / Windows shortcuts — embedded `-m` invocation switches to `accubench`.
+- **Uninstallers sweep both** (QR R3): during the alias window, `install.sh`/`install.ps1` and the in-app uninstaller remove both command names, both data dirs, both source dirs, the `.app` bundle, and the `.lnk` shortcut.
+- **Keystore hardening**: `keys.json` is now created with `os.open(O_CREAT, 0o600)` so the inode mode is 0600 from the moment of creation — no umask window between open and chmod. `clear_all()` deleted (byte-identical duplicate of `wipe()`); `webui.py:736` repointed. Atomic-rename write with cleanup on partial failure.
+- **Port guard** (QR R5): `find_port()` explicitly bounds the probe to 8765..8776 (12 ports) so a quiet listener can't hide.
+- **Raw URLs swept** (F3/F4 fold-in): `uninstall.sh:3` and `uninstall.ps1:2` now use release-asset URLs (`releases/latest/download/...`), not raw.githubusercontent.
+- **CHANGELOG rebuilt** (F1): 15 missing releases (v0.9.6–v0.9.22) re-added; historical sections below preserve original `effbench` references per the sweep carve-out (R6).
+- **README refreshed** (F2): bare `accubench` = browser UI (since v0.4.0), terminal menu is the explicit fallback; install one-liners point at `EugeneClaw/accubench`.
+
+## 0.9.22 — 2026-08-19
+
+Security pass — cross-site request rejection, key-reveal endpoint removed.
+
+- Web UI now rejects cross-site requests on `/api/*` via `Sec-Fetch-Site` gate (probed cross-site GET+POST → 403, no-header → passes).
+- `/api/key-reveal` endpoint removed (commit `e708669`); live probe confirms GET/POST → 404.
+- Verified live against the actual v0.9.22 HTTP handler.
+
+## 0.9.21 — 2026-08-19
+
+loadConfig return, api() error propagation, picker/fill saved-key path, local custom URLs.
+
+## 0.9.20 — 2026-08-19
+
+Leaderboard sort by pass, batch-fill error handling + fallback, shortcut icon (`assets/accubench.ico`, install.ps1 IconLocation).
+
+## 0.9.19 — 2026-08-19
+
+Leaderboard number+trophy, eff-t/s speed crowns, key-saved placeholder.
+
+## 0.9.18 — 2026-08-19
+
+AccuBench branding pass, quiet connection-abort spam.
+
+## 0.9.17 — 2026-08-19
+
+Installer fetch+reset, report regeneration, friendly 404, handler chain fixes.
+
+## 0.9.16 — 2026-08-19
+
+Batch runs, export/import in reports section, AccuBench banner + ASCII startup.
+
+## 0.9.15 — 2026-08-19
+
+Export/import merge, provider-scoped keys.
+
+## 0.9.14 — 2026-08-19
+
+Stop-run button, suite-aware leaderboard, board visible by default.
+
 ## 0.9.13 — 2026-08-18
 
-Setup wizard: fixed save button stuck on ‘saving…’.
+Wizard save: drop hidden detect call, bound api() with 60s timeout, wizFinish finally.
 
 ## 0.9.12 — 2026-08-18
 
-Leaderboard (best run per model), report delete, saved-key hint.
+Leaderboard (best run per model, badges), report delete, saved-key hint.
 
-# Changelog
+## 0.9.11 — 2026-08-18
 
-All notable changes to effbench, newest first.
+Wizard: fix unclosed local-step div nesting cloud step; light text on choice cards; drop stray closer.
+
+## 0.9.10 — 2026-08-18
+
+Setup wizard v2: modal fork (local vs cloud), detect, summary card, blank-url guard.
+
+## 0.9.9 — 2026-08-18
+
+Settings: reset-to-blank (unsave), wipes config.json and optionally saved keys.
+
+## 0.9.8 — 2026-08-18
+
+Wizard: provider presets, live model list, key management, ollama preset.
+
+## 0.9.7 — 2026-08-18
+
+Cloud: handle reasoning-only streams, guard token math, ollama compat.
+
+## 0.9.6 — 2026-08-18
+
+Cloud key save: accept nested key, strip before config persist, surface save errors, no-cache UI.
 
 ## 0.9.5 — 2026-08-18
 

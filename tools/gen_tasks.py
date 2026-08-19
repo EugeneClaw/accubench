@@ -5,7 +5,7 @@ import os
 import re
 import urllib.request
 
-URL = os.environ.get("EFFBENCH_URL", "http://localhost:11434") + "/v1/chat/completions"
+URL = os.environ.get("ACCUBENCH_URL", "http://localhost:11434") + "/v1/chat/completions"
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "builder-drafts")
 os.makedirs(OUT, exist_ok=True)
 

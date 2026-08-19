@@ -503,7 +503,6 @@
       <datalist id="cloud-model-list"></datalist>
       <div class="hint" id="cloud-model-hint" style="display:none;">Pick from the list (fetched live from the provider once your key is in) or type the exact model id.</div>
       <input type="password" id="cfg-cloud-key" placeholder="paste your API key here" autocomplete="off" style="width:340px; display:none;" oninput="keyEdited()">
-      <div id="cloud-key-mask" style="display:none; width:340px; padding:7px 10px; border:1px solid var(--line,#232a36); border-radius:8px; background:var(--card,#141922); color:var(--ink3,#9AA6B5); font-size:13px;">•••••••••••• &nbsp;<span style="font-size:11px;">key saved — leave blank to keep, paste new to replace</span></div>
       <div class="hint" id="cloud-key-hint" style="display:none;">The key your provider issued. <a href="#" onclick="toggleKeyVis();return false" id="key-show-link">show</a> · saved only on this machine.</div>
       <div class="hint" id="cloud-key-status" style="display:none;"></div>
       <div class="field" id="key-mgmt" style="display:none;">
@@ -962,11 +961,13 @@ async function loadLeaderboard() {
   const el = document.getElementById('lb-body');
   if (!r.entries || !r.entries.length) { el.innerHTML = '<div class="hint">no runs yet</div>'; return; }
   const trophy = ['🏆', '🥈', '🥉'];
-  const cars = ['🏎️', '🚗', '🚕'];
+  // speed crowns: ranked independently by effective t/s (what the user sees)
+  const speedOrder = [...r.entries].filter(e => e.eff_tps).sort((a, b) => b.eff_tps - a.eff_tps).slice(0, 3).map(e => e.model);
+  const spdIcon = m => { const i = speedOrder.indexOf(m); return i < 0 ? '' : ' <span title="fastest effective t/s" style="opacity:.75; font-size:12px;">' + ['🏎️', '🚗', '🚕'][i] + '</span>'; };
   el.innerHTML = '<div class="runrow head"><span>#</span><span>model</span><span class="rr-num">best % right</span><span class="rr-num">eff t/s</span><span class="rr-num">runs</span></div>' +
     r.entries.map(e => {
-      const acc = (e.rank <= 3) ? trophy[e.rank-1] + ' ' : (e.rank) + '.';
-      const spd = (e.rank <= 3) ? ' <span style="opacity:.75; font-size:12px;">' + cars[e.rank-1] + '</span>' : '';
+      const acc = (e.rank <= 3) ? e.rank + '. ' + trophy[e.rank-1] : (e.rank) + '.';
+      const spd = spdIcon(e.model);
       const badge = '<span class="lb-badge ' + (e.where === 'cloud' ? 'lb-cloud' : 'lb-local') + '">' + (e.where === 'cloud' ? '☁ cloud' : '🖥 local') + '</span>';
       return '<div class="runrow"><span>' + acc + '</span>' +
         '<span class="rr-tag">' + badge + ' <b>' + (e.label) + '</b>' + spd + '</span>' +
@@ -1292,12 +1293,18 @@ async function saveConfig() {
 }
 async function refreshKeyStatus(url, model) {
   const el = document.getElementById('cloud-key-status');
+  const inp = document.getElementById('cfg-cloud-key');
   if (!url || !model) { el.textContent = ''; return; }
   try {
     const r = await fetch('/api/key-status?url=' + encodeURIComponent(url) + '&model=' + encodeURIComponent(model));
     const d = await r.json();
     el.textContent = d.saved ? '✓ key saved on this machine — paste a new one to replace it'
                              : 'no key saved yet — paste one above';
+    if (inp && !inp.value) {
+      inp.type = 'password';
+      inp.placeholder = d.saved ? '•••••••••••• saved — leave blank to keep'
+                                : 'paste your API key';
+    }
   } catch (e) { el.textContent = ''; }
 }
 

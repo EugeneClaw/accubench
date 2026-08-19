@@ -625,10 +625,28 @@ async function fillBatchFromProvider() {
   const cloud = c.cloud || {};
   if (!cloud.url || !cloud.model) { alert('save a cloud target first (setup wizard)'); return; }
   const q = 'url=' + encodeURIComponent(cloud.url) + '&model=' + encodeURIComponent(cloud.model);
-  const r = await api('/api/cloud-models?' + q);
   const sel = document.getElementById('batch-models');
-  sel.innerHTML = (r.models || []).map(m => '<option value="' + m + '">' + m + '</option>').join('');
-  sel.size = Math.min(10, Math.max(4, (r.models || []).length));
+  const prog = document.getElementById('batch-progress');
+  let models = [], note = '';
+  try {
+    const r = await api('/api/cloud-models?' + q);
+    models = r.models || [];
+    if (!models.length) note = 'provider returned an empty list';
+  } catch (e) {
+    note = 'provider list unavailable (' + (e && e.error ? e.error : 'network') + ')';
+  }
+  // fallback + supplement: models we already know from past runs and the saved target
+  let known = [cloud.model];
+  try {
+    const lb = await api('/api/leaderboard');
+    known = known.concat((lb.entries || []).filter(e => e.where === 'cloud').map(e => e.model.replace(/ \(quick\)$/, '')));
+  } catch (e) { /* best-effort */ }
+  const all = [...new Set([...models, ...known])].filter(Boolean);
+  if (!all.length) { if (prog) prog.textContent = 'no models available — save a cloud target first'; return; }
+  sel.innerHTML = all.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+  sel.size = Math.min(10, Math.max(4, all.length));
+  if (note && prog) prog.textContent = note + ' — showing known models; pick and run, or fix the key in the wizard';
+  else if (models.length && prog) prog.textContent = all.length + ' models — Ctrl/Cmd-click to select several, then Run batch';
 }
 
 function startRunTail() {

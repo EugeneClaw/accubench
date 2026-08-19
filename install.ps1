@@ -91,13 +91,15 @@ pause
 "@ | Out-File -Encoding ASCII $uiLauncher
 
 $WshShell = New-Object -ComObject WScript.Shell
+$Icon = Join-Path $Src "assets\accubench.ico"
 foreach ($shortcutHome in @([Environment]::GetFolderPath("Desktop"),
                             (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"))) {
   $lnk = Join-Path $shortcutHome "effbench.lnk"
   $sc = $WshShell.CreateShortcut($lnk)
   $sc.TargetPath = $uiLauncher
   $sc.WorkingDirectory = $Bin
-  $sc.Description = "effbench — local AI benchmark (close window to stop)"
+  if (Test-Path $Icon) { $sc.IconLocation = "$Icon,0" }
+  $sc.Description = "AccuBench — local AI benchmark (close window to stop)"
   $sc.Save()
 }
 Write-Host "  OK shortcut: Desktop + Start Menu -> effbench"

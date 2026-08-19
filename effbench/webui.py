@@ -384,7 +384,8 @@ class Handler(BaseHTTPRequestHandler):
                     "where": "cloud" if "cloud" in base else "local",
                 })
             suite_order = {"full": 0, "quick": 1}
-            out.sort(key=lambda x: (suite_order.get(x["suite"], 2), -x["pass"], -(x.get("eff_tps") or 0)))
+            # position follows best pass-rate (user rule); suite stays as a label, tiebreak on eff t/s
+            out.sort(key=lambda x: (-x["pass"], -(x.get("eff_tps") or 0)))
             for i, e in enumerate(out):
                 e["rank"] = i + 1
             self._json({"entries": out})

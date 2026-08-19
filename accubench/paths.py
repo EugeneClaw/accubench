@@ -60,4 +60,46 @@ def data_dirs_to_migrate():
 
 
 def ensure_data_dir():
+    """Make sure the resolved data dir exists; no-op if it already does."""
     os.makedirs(data_dir(), exist_ok=True)
+
+
+def migrate_old_data_dir():
+    """One-shot copy of ~/.effbench → ~/.accubench on first run after upgrade.
+
+    Behaviour:
+      * If ~/.accubench already exists: do nothing (the new dir wins).
+      * If ~/.effbench doesn't exist: do nothing (fresh install).
+      * Otherwise: copy into a temp dir inside ~/.accubench's parent,
+        write a `.migrated` stamp INSIDE the temp dir, then atomic
+        rename into place. Old ~/.effbench is left untouched for
+        instant rollback.
+    Returns the path of the migrated-to directory, or None on no-op.
+    """
+    import shutil
+    import tempfile
+
+    new = os.path.expanduser("~/.accubench")
+    if os.path.isdir(new):
+        return None
+    old = os.path.expanduser("~/.effbench")
+    if not os.path.isdir(old):
+        return None
+    parent = os.path.dirname(new)
+    os.makedirs(parent, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".accubench-migrate-", dir=parent) as tmp:
+        # Copy first (succeeds or raises); stamp last so a partial copy
+        # never looks like a completed migration to anything that looks
+        # at `.migrated`.
+        for entry in os.listdir(old):
+            src = os.path.join(old, entry)
+            dst = os.path.join(tmp, entry)
+            if os.path.isdir(src):
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy2(src, dst)
+        # Stamp inside temp dir before rename (R4).
+        with open(os.path.join(tmp, ".migrated"), "w", encoding="utf-8") as f:
+            f.write("migrated from ~/.effbench\n")
+        os.rename(tmp, new)
+    return new

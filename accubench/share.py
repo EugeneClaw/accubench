@@ -30,7 +30,7 @@ def render_markdown(tag, recs, agg, fit_band=None, fit_class="unknown"):
         }.get(fit_class, "")
         fit_line = f"- **Hardware fit:** {verdict} (typical {lo}–{hi} tok/s)"
 
-    md = f"""### effbench run: `{tag}`
+    md = f"""### accubench run: `{tag}`
 
 - **{n} tasks**, pass rate **{pr*100:.1f}%**
 - Raw t/s: **{rtps:.1f}** · Effective t/s: **{etps:.1f}**

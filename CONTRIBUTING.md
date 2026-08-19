@@ -1,20 +1,20 @@
 # Contributing to
 
-Thanks for your interest in `effbench`. This is a small tool with a small surface area; contributions are welcome but please keep them focused.
+Thanks for your interest in `accubench`. This is a small tool with a small surface area; contributions are welcome but please keep them focused.
 
 ## Project structure
 
 ```
-effbench/
-├── effbench/             # the package itself
+accubench/
+├── accubench/             # the package itself
 │   ├── __main__.py       # argparse + all subcommand dispatch
 │   ├── client.py         # OpenAI-compatible HTTP client (stdlib only)
 │   ├── tasks.py          # suite loader + validation
 │   ├── verify.py         # the 6 grader types (exact/contains/json/code-exec/...)
 │   ├── ledger.py         # JSONL append-only ledger + aggregation
 │   ├── report.py         # self-contained HTML report (inline SVG, no CDNs)
-│   ├── wizard.py         # the `effbench go` flow
-│   ├── config.py         # ~/.effbench/config.json
+│   ├── wizard.py         # the `accubench go` flow
+│   ├── config.py         # ~/.accubench/config.json
 │   ├── csv_export.py     # Sheets/Excel CSV writers
 │   ├── share.py          # copy-pasteable Markdown
 │   ├── explainer.py      # purpose + difficulty tags for every task
@@ -41,11 +41,11 @@ effbench/
 ## Development setup
 
 ```bash
-git clone https://github.com/EugeneClaw/effbench.git
-cd effbench
+git clone https://github.com/EugeneClaw/accubench.git
+cd accubench
 
 # No venv needed (no pip deps). Just run:
-python3 -m effbench validate --suite suites/quick.json
+python3 -m accubench validate --suite suites/quick.json
 python3 tools/selftest.py
 ```
 
@@ -55,19 +55,19 @@ Every task needs three things:
 
 1. **`prompt`** — the question to the model.
 2. **`grader`** — one of the 6 supported types: `exact`, `contains`, `contains_all`, `regex`, `code`, `json`.
-3. **`good_output` and `bad_output`** — known-good and known-bad fixtures. **Your grader must pass the good fixture and fail the bad one. No exceptions.** `python3 -m effbench validate --suite suites/your-suite.json` proves this.
+3. **`good_output` and `bad_output`** — known-good and known-bad fixtures. **Your grader must pass the good fixture and fail the bad one. No exceptions.** `python3 -m accubench validate --suite suites/your-suite.json` proves this.
 
-Add `purpose` (chat / code / reasoning / extract / structure / summarise) and `difficulty` (easy / medium / hard) if you're adding to `effbench/explainer.py`'s `TASK_PROFILES`. If you don't, the report will use the task ID and grader type to pick a default — but explicit is better.
+Add `purpose` (chat / code / reasoning / extract / structure / summarise) and `difficulty` (easy / medium / hard) if you're adding to `accubench/explainer.py`'s `TASK_PROFILES`. If you don't, the report will use the task ID and grader type to pick a default — but explicit is better.
 
 Then add the new task to one of the suite files. **Never edit a suite to weaken a grader** (i.e. to make a known-bad output pass). That's the cardinal sin.
 
 ## Adding a grader type
 
-If the 6 existing types don't cover your case, add a new one in `effbench/verify.py`. Each grader is a function: `grade(spec, content, reasoning) -> (bool, detail)`. Add a test case in `tools/selftest.py`. Make sure `good_output` and `bad_output` for at least one existing task still pass validation.
+If the 6 existing types don't cover your case, add a new one in `accubench/verify.py`. Each grader is a function: `grade(spec, content, reasoning) -> (bool, detail)`. Add a test case in `tools/selftest.py`. Make sure `good_output` and `bad_output` for at least one existing task still pass validation.
 
 ## Updating the expectations library
 
-`effbench/expectations.json` holds known-good raw-t/s bands per (hardware class, model arch, quant). To add a new entry:
+`accubench/expectations.json` holds known-good raw-t/s bands per (hardware class, model arch, quant). To add a new entry:
 
 ```json
 {

@@ -51,7 +51,9 @@ def _resolve_server():
     Returns (url, props) or (None, None) if the user gives up.
     """
     candidates = []
-    for url in [config.get("url"), os.environ.get("EFFBENCH_URL")] + CANDIDATE_URLS:
+    for url in [config.get("url"),
+                os.environ.get("ACCUBENCH_URL"),
+                os.environ.get("EFFBENCH_URL")] + CANDIDATE_URLS:
         if url and url not in candidates:
             candidates.append(url)
     for url in candidates:
@@ -294,10 +296,10 @@ def _do_uninstall(interactive=True):
     pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     prefix = os.path.dirname(os.path.dirname(pkg_root))
     # Only offer to delete if we're inside a real install layout
-    # (~/.local/share/effbench or %LOCALAPPDATA%\effbench\share\effbench).
+    # (~/.local/share/accubench or %LOCALAPPDATA%\accubench\share\accubench).
     # A git clone in ~/Dev is NOT an install — refuse to touch it.
     marker = os.path.join(pkg_root, ".git")
-    in_store = "share" in pkg_root.lower() or "effbench" == os.path.basename(os.path.dirname(pkg_root)).lower()
+    in_store = "share" in pkg_root.lower() or "accubench" == os.path.basename(os.path.dirname(pkg_root)).lower()
     if not in_store and os.path.exists(marker):
         print()
         print("   this looks like a git clone, not an installed copy.")
@@ -305,14 +307,18 @@ def _do_uninstall(interactive=True):
         print("   (your settings and reports live in {d})".format(d=DATA_DIR))
         return
     paths = [p for p in [pkg_root,
+                         os.path.join(prefix, "bin", "accubench"),
+                         os.path.join(prefix, "bin", "accubench.cmd"),
+                         # alias-window dual sweep: keep removing the old
+                         # name until v1.0 so this command stays accurate.
                          os.path.join(prefix, "bin", "effbench"),
                          os.path.join(prefix, "bin", "effbench.cmd")]
              if os.path.exists(p)]
     is_windows = sys.platform.startswith("win")
 
     print()
-    print("   uninstall effbench")
-    print("   ──────────────────")
+    print("   uninstall accubench")
+    print("   ────────────────────")
     if not paths:
         print("   (no installed copy found — only user data remains)")
     for p in paths:
@@ -346,6 +352,14 @@ def _do_uninstall(interactive=True):
             print(f"   ✓ removed {DATA_DIR}")
         except Exception as e:
             failures.append((DATA_DIR, e))
+        # alias-window: sweep ~/.effbench too if it exists
+        old_data = os.path.expanduser("~/.effbench")
+        if os.path.isdir(old_data):
+            try:
+                shutil.rmtree(old_data, ignore_errors=True)
+                print(f"   ✓ removed {old_data}")
+            except Exception as e:
+                failures.append((old_data, e))
     for p, e in failures:
         print(f"   ✗ couldn't remove {p}: {e}")
         print("     delete it manually once this window is closed")
@@ -353,13 +367,13 @@ def _do_uninstall(interactive=True):
         print("   (the PATH entry can stay — it points at a folder that no longer exists)")
     print()
     print("   uninstalled. to reinstall later:")
-    print("     curl -fsSL https://raw.githubusercontent.com/EugeneClaw/effbench/main/install.sh | bash")
+    print("     curl -fsSL https://github.com/EugeneClaw/accubench/releases/latest/download/install.sh | bash")
     print()
 
 
 def main_menu():
     print()
-    print(f"  effbench {__version__}")
+    print(f"  accubench {__version__}")
     print("  how fast — and how accurate — is your local AI?")
     print()
     while True:

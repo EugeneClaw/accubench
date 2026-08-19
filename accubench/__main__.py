@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""effbench: quality-weighted benchmark for any OpenAI-compatible inference server.
+"""accubench: quality-weighted benchmark for any OpenAI-compatible inference server.
 
 Usage:
-    python3 -m effbench go          [--url URL] [--tag NAME] [--runs N]
+    python3 -m accubench go          [--url URL] [--tag NAME] [--runs N]
                                   [--out report.html] [--open]
-    python3 -m effbench run         --url URL --suite DIR [--tag NAME] [--runs N]
-    python3 -m effbench report       --ledger FILE --out FILE.html [--tags A,B]
-    python3 -m effbench compare      --ledger FILE --tag A --against B --out FILE.html
-    python3 -m effbench share       --ledger FILE --tag NAME
-    python3 -m effbench csv         --ledger FILE --tag NAME [--summary|--compare OTHER]
-    python3 -m effbench validate    --suite DIR
+    python3 -m accubench run         --url URL --suite DIR [--tag NAME] [--runs N]
+    python3 -m accubench report       --ledger FILE --out FILE.html [--tags A,B]
+    python3 -m accubench compare      --ledger FILE --tag A --against B --out FILE.html
+    python3 -m accubench share       --ledger FILE --tag NAME
+    python3 -m accubench csv         --ledger FILE --tag NAME [--summary|--compare OTHER]
+    python3 -m accubench validate    --suite DIR
 """
 import argparse
 import json
@@ -282,10 +282,10 @@ def cmd_go(args):
 
 
 def cmd_config(args):
-    """View or edit persistent config at ~/.effbench/config.json."""
+    """View or edit persistent config at ~/.accubench/config.json."""
     from . import config as cfg
     if getattr(args, "set_key", None):
-        # `effbench config set KEY VALUE`
+        # `accubench config set KEY VALUE`
         key = args.set_key
         value = args.set_value
         if value in ("true", "false"):
@@ -297,7 +297,7 @@ def cmd_config(args):
         cfg.set_value(key, value)
         print(f"set {key} = {value!r}")
     elif getattr(args, "get_key", None):
-        # `effbench config get KEY`
+        # `accubench config get KEY`
         val = cfg.get(args.get_key)
         if val is None:
             print(f"{args.get_key}: (not set)")
@@ -309,7 +309,7 @@ def cmd_config(args):
         import json
         print(json.dumps(cfg.load(), indent=2))
     else:
-        # `effbench config` — default to show
+        # `accubench config` — default to show
         import json
         print(json.dumps(cfg.load(), indent=2))
     return 0
@@ -319,11 +319,11 @@ def cmd_setup(args):
     """First-run wizard: probe a candidate server, save the URL if successful."""
     from . import config as cfg
     print()
-    print("  effbench setup")
-    print("  ──────────────")
+    print("  accubench setup")
+    print("  ────────────────")
     print()
     print("  This finds your inference server and saves the URL")
-    print("  to ~/.effbench/config.json so effbench go works without --url.")
+    print("  to ~/.accubench/config.json so accubench go works without --url.")
     print()
 
     # Common candidates to try, in order, deduplicated
@@ -366,7 +366,7 @@ def cmd_setup(args):
         print("   Try one of these:")
         print("     · start your server (inference server with OpenAI-compatible API)")
         print("     · find its URL (often http://localhost:PORT)")
-        print("     · run:  effbench setup --url http://your-server:port")
+        print("     · run:  accubench setup --url http://your-server:port")
         print()
         return 1
 
@@ -374,7 +374,7 @@ def cmd_setup(args):
     cfg.set_value("url", found)
     print(f"   ✓ saved to {cfg.PATH}")
     print()
-    print("   next:  effbench go")
+    print("   next:  accubench go")
     print()
 
 
@@ -395,12 +395,12 @@ def cmd_menu(args):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(prog="effbench",
+    p = argparse.ArgumentParser(prog="accubench",
                                 description="quality-weighted benchmark for any OpenAI-compatible inference server")
     sub = p.add_subparsers(dest="cmd")
 
     pg = sub.add_parser("go", help="wizard: probe, run, render, open — zero args needed")
-    pg.add_argument("--url", help="server URL (default: $EFFBENCH_URL or http://localhost:11434)")
+    pg.add_argument("--url", help="server URL (default: $ACCUBENCH_URL or http://localhost:11434)")
     pg.add_argument("--tag", help="name for this run (default: auto from model + time)")
     pg.add_argument("--runs", type=int, default=3, help="runs per task (default 3)")
     pg.add_argument("--ledger", help="ledger path (default: effbench.jsonl)")
@@ -413,7 +413,7 @@ def build_parser():
     pset.add_argument("--url", help="skip the search and save this URL directly")
     pset.set_defaults(func=cmd_setup)
 
-    pcf = sub.add_parser("config", help="view or edit ~/.effbench/config.json")
+    pcf = sub.add_parser("config", help="view or edit ~/.accubench/config.json")
     pcfsub = pcf.add_subparsers(dest="config_cmd")
     pcfsub.add_parser("show", help="show the full config").set_defaults(show=True)
     pcfsub.add_parser("path", help="print the config file path").set_defaults(path=True)
@@ -467,10 +467,10 @@ def build_parser():
                      help="export side-by-side per-task comparison vs OTHER_TAG")
     pcv.set_defaults(func=cmd_csv)
 
-    pu = sub.add_parser("uninstall", help="remove effbench (asks before deleting anything)")
+    pu = sub.add_parser("uninstall", help="remove accubench (asks before deleting anything)")
     pu.set_defaults(func=cmd_uninstall)
 
-    pu2 = sub.add_parser("ui", help="open the browser UI (default when you type bare `effbench`)")
+    pu2 = sub.add_parser("ui", help="open the browser UI (default when you type bare `accubench`)")
     pu2.set_defaults(func=cmd_ui)
 
     pu3 = sub.add_parser("menu", help="terminal menu (fallback when no browser is available)")
@@ -494,7 +494,7 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
     if not getattr(args, "cmd", None):
-        # bare `effbench` → browser UI
+        # bare `accubench` → browser UI
         from . import webui
         return webui.launch()
     return args.func(args)

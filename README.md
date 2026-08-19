@@ -19,22 +19,22 @@ The faster quant is 8% faster and 33% worse. Raw benchmarks crown it; AccuBench 
 
 ```bash
 # Mac / Linux
-curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/EugeneClaw/accubench/releases/latest/download/install.sh | bash
 ```
 
 ```powershell
 # Windows PowerShell
-irm https://github.com/EugeneClaw/effbench/releases/latest/download/install.ps1 | iex
+irm https://github.com/EugeneClaw/accubench/releases/latest/download/install.ps1 | iex
 ```
 
-Install it and a menu opens — press 1, get a report in your browser. The one-line install is the only technical step; after that everything is menu-driven.
+Install it and the browser UI opens — click "Quick benchmark", get a colour-coded report in seconds. The one-line install is the only technical step; after that everything is menu-driven.
 
-The menu finds your AI server automatically (llama.cpp, LM Studio, Ollama, vLLM — anything with an OpenAI-compatible API on localhost or your network), runs 12 short tasks (~15 seconds), and opens a colour-coded report in your browser. Can't find your server? It asks you where it is, once, and remembers.
+The browser UI talks to your AI server automatically (llama.cpp, LM Studio, Ollama, vLLM — anything with an OpenAI-compatible API on localhost or your network), runs 12 short tasks (~15 seconds), and opens a colour-coded report. Can't find your server? It asks you where it is, once, and remembers. There's a terminal menu fallback (`accubench menu`) for when no browser is available.
 
-Typing `effbench` any time re-opens the menu:
+Typing `accubench` any time re-opens the browser UI:
 
 ```
-  effbench 0.3.0
+  accubench 0.9.22
   how fast — and how accurate — is your local AI?
 
    1) quick benchmark          (~15 seconds)
@@ -46,24 +46,26 @@ Typing `effbench` any time re-opens the menu:
    q) quit
 ```
 
-Your results, settings and saved reports live in `~/.effbench/` (soon `~/.accubench/`) — not scattered in whatever folder you ran the command from.
+Your results, settings and saved reports live in `~/.accubench/` — not scattered in whatever folder you ran the command from.
+
+> **Upgrading from v0.9.22 or earlier?** Your `~/.effbench/` is copied to `~/.accubench/` on first run. The old command `effbench` keeps working as an alias until v1.0.
 
 **Uninstall** is one line too:
 
 ```bash
-curl -fsSL https://github.com/EugeneClaw/effbench/releases/latest/download/uninstall.sh | bash
+curl -fsSL https://github.com/EugeneClaw/accubench/releases/latest/download/uninstall.sh | bash
 ```
 
 ```powershell
-irm https://github.com/EugeneClaw/effbench/releases/latest/download/uninstall.ps1 | iex
+irm https://github.com/EugeneClaw/accubench/releases/latest/download/uninstall.ps1 | iex
 ```
 
-**Persist your config?** All customisations live in `~/.effbench/config.json`. Manage it with:
+**Persist your config?** All customisations live in `~/.accubench/config.json`. Manage it with:
 
 ```bash
-effbench config show                 # show everything
-effbench config set url http://...   # change your default server
-effbench config get runs             # read a value
+accubench config show                 # show everything
+accubench config set url http://...   # change your default server
+accubench config get runs             # read a value
 ```
 
 ---
@@ -80,35 +82,36 @@ The **HTML report** (one file, double-click to open, no server needed):
 The **share block** (one command, copy-paste ready):
 
 ```bash
-effbench share --tag my-run
+accubench share --tag my-run
 ```
 
 The **spreadsheet** (open in Excel, Numbers, Google Sheets):
 
 ```bash
-effbench csv --tag my-run --out results.csv
+accubench csv --tag my-run --out results.csv
 ```
 
 ---
 
 ## The commands
 
-Most people only ever need the menu — type `effbench` and press numbers. These exist for scripting and fine control:
+Most people only ever need the browser UI — type `accubench` and click. These exist for scripting and fine control:
 
 | Command | What it does |
 |---|---|
-| `effbench` | **The menu.** Quick bench, full bench, compare, past reports, settings, uninstall. |
-| `effbench ui` | Same menu, explicit. |
-| `effbench go` | Non-interactive wizard: probe, run, render, open. Good for scripts. |
-| `effbench setup` | Find your server at common URLs, save the working one. |
-| `effbench config` | View or edit `~/.effbench/config.json` (subcommands: `show`, `get`, `set`, `path`). |
-| `effbench run` | Lower-level. Choose suite, runs, tag, ledger. |
-| `effbench report` | Render an HTML report from any ledger. |
-| `effbench compare` | Two tags, side-by-side HTML report. |
-| `effbench share` | Copy-pasteable Markdown summary for Discord/forums/blogs. |
-| `effbench csv` | Per-task CSV (default), summary CSV (`--summary`), or compare CSV (`--compare OTHER`). |
-| `effbench uninstall` | Remove effbench (asks before deleting anything). |
-| `effbench validate` | Self-test every task grader against known-good and known-bad fixtures. |
+| `accubench` | **The browser UI.** Quick bench, full bench, compare, past reports, settings, uninstall. |
+| `accubench menu` | Terminal menu fallback (no browser). |
+| `accubench ui` | Same as bare `accubench` — explicit. |
+| `accubench go` | Non-interactive wizard: probe, run, render, open. Good for scripts. |
+| `accubench setup` | Find your server at common URLs, save the working one. |
+| `accubench config` | View or edit `~/.accubench/config.json` (subcommands: `show`, `get`, `set`, `path`). |
+| `accubench run` | Lower-level. Choose suite, runs, tag, ledger. |
+| `accubench report` | Render an HTML report from any ledger. |
+| `accubench compare` | Two tags, side-by-side HTML report. |
+| `accubench share` | Copy-pasteable Markdown summary for Discord/forums/blogs. |
+| `accubench csv` | Per-task CSV (default), summary CSV (`--summary`), or compare CSV (`--compare OTHER`). |
+| `accubench uninstall` | Remove accubench (asks before deleting anything). |
+| `accubench validate` | Self-test every task grader against known-good and known-bad fixtures. |
 
 ---
 
@@ -123,13 +126,11 @@ Most people only ever need the menu — type `effbench` and press numbers. These
 
 - **6 grader types**: exact, contains, regex, **code-execution** (real `python3` run, stdout compared), JSON, contains-all. No LLM-as-judge — same answer always gets the same verdict.
 
-- **Hardware expectations library** (`effbench/expectations.json`): ships known-good raw-t/s bands for common models + quants across 5 hardware classes (phone_laptop, desktop_gpu_mid, desktop_gpu_high, workstation, dataclass). Your result is compared to the band and tagged `above` / `in` / `below`. Add new entries as the field moves.
+- **Hardware expectations library** (`accubench/expectations.json`): ships known-good raw-t/s bands for common models + quants across 5 hardware classes (phone_laptop, desktop_gpu_mid, desktop_gpu_high, workstation, dataclass). Your result is compared to the band and tagged `above` / `in` / `below`. Add new entries as the field moves.
 
-- **Purpose tags** (`effbench/explainer.py`): each task is labelled with one of *chat, code, reasoning, extract, structure, summarise* and one of *easy, medium, hard*. The radar chart on the report shows where the model is broad vs narrow.
+- **Purpose tags** (`accubench/explainer.py`): each task is labelled with one of *chat, code, reasoning, extract, structure, summarise* and one of *easy, medium, hard*. The radar chart on the report shows where the model is broad vs narrow.
 
 - **Append-only JSON ledger, never mutated.** Compare two runs without re-running anything.
-
----
 
 ## Platform support
 
@@ -138,38 +139,34 @@ Most people only ever need the menu — type `effbench` and press numbers. These
 - **Python:** 3.9+. No external dependencies. No virtual environment required. No pip installs.
 - **Browser:** any. The HTML report is self-contained — no CDNs, no fonts loaded from the web, no analytics.
 
----
-
-## When to use effbench
+## When to use accubench
 
 | If you want to know... | Run this |
 |---|---|
-| Is this server fast enough? | `effbench go` |
-| Is this quant better than that quant? | `effbench go` twice, then `effbench compare --tag B --against A` |
-| Is my new spec-decoding config actually better? | `effbench go --tag OLD` then `effbench go --tag NEW`, then `effbench compare` |
-| What's my typical t/s for this hardware? | `effbench go` — the verdict tells you |
-| Should I share a recipe publicly? | `effbench run --suite suites/ --tag FINAL --runs 3` |
-
----
+| Is this server fast enough? | `accubench go` |
+| Is this quant better than that quant? | `accubench go` twice, then `accubench compare --tag B --against A` |
+| Is my new spec-decoding config actually better? | `accubench go --tag OLD` then `accubench go --tag NEW`, then `accubench compare` |
+| What's my typical t/s for this hardware? | `accubench go` — the verdict tells you |
+| Should I share a recipe publicly? | `accubench run --suite suites/ --tag FINAL --runs 3` |
 
 ## The full workflow recipe
 
 ```bash
 # baseline run on your current setup
-effbench go --tag recipe-current --out current.html
+accubench go --tag recipe-current --out current.html
 
 # try a different setup; re-run after editing the bat / launch script
-effbench go --tag recipe-new --out new.html
+accubench go --tag recipe-new --out new.html
 
 # compare
-effbench compare --ledger effbench.jsonl --tag recipe-new --against recipe-current \
+accubench compare --ledger accubench.jsonl --tag recipe-new --against recipe-current \
                  --out compare.html
 
 # shareable Markdown
-effbench share --ledger effbench.jsonl --tag recipe-current
+accubench share --ledger accubench.jsonl --tag recipe-current
 
 # spreadsheet
-effbench csv --ledger effbench.jsonl --tag recipe-current --out current.csv
+accubench csv --ledger accubench.jsonl --tag recipe-current --out current.csv
 ```
 
 ---
@@ -184,13 +181,9 @@ Three numbers per task, two numbers per run:
 
 An errored request (server 500, timeout, network drop) is recorded as a **failure**, not skipped. From the user's chair that's what an error is.
 
----
-
 ## Why this exists
 
-I built this because I kept seeing two servers with the same model and very different answers. One was 30% faster on a benchmark and visibly worse on real work. The existing tools — speed benchmarks, eval harnesses, leader-boards — — measure one axis each. effbench measures the one that matters when you're actually using the model.
-
----
+I built this because I kept seeing two servers with the same model and very different answers. One was 30% faster on a benchmark and visibly worse on real work. The existing tools — speed benchmarks, eval harnesses, leader-boards — — measure one axis each. accubench measures the one that matters when you're actually using the model.
 
 ## License
 

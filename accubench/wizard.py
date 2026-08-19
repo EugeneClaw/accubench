@@ -65,7 +65,7 @@ def _autotag(props):
 
 
 def _run_quietly(url, suite_path, tag, ledger, runs):
-    """Run the bench. Same machinery as `effbench run` but with friendlier output."""
+    """Run the bench. Same machinery as `accubench run` but with friendlier output."""
     # import here to avoid circular
     from .__main__ import run_task
     from .tasks import load_suite
@@ -155,14 +155,14 @@ def go(args):
     if cli_url and cli_url != url:  # user passed something different from fallback
         if not cfg.get("url"):
             cfg.set_value("url", url)
-            print(f"   ✓ saved {url} as your default server (edit: `effbench config set url URL`)")
+            print(f"   ✓ saved {url} as your default server (edit: `accubench config set url URL`)")
 
     print(f"   ✓ build {props.get('build', '?')}, "
           f"model {os.path.basename(props.get('model_path', '?'))}")
 
     suite_path = _autodetect_suite()
     print(f"   → using suite: {os.path.basename(suite_path)} (the quick one, ~12 tasks)")
-    print(f"   → run a fuller suite with:  python3 -m effbench run --suite suites/ ...")
+    print(f"   → run a fuller suite with:  python3 -m accubench run --suite suites/ ...")
 
     tag = getattr(args, "tag", None) or _autotag(props)
     print(f"   → tag: {tag}  (override with --tag NAME)")
@@ -212,9 +212,9 @@ def go(args):
         print(f"   ──────────────────────────────────────────────")
     print()
     print(f"   next:")
-    print(f"     · share this run:    python3 -m effbench share --tag {tag}")
-    print(f"     · export to CSV:     python3 -m effbench csv --tag {tag} --out tasks.csv")
-    print(f"     · compare two runs:  python3 -m effbench go --compare --tag NEW")
+    print(f"     · share this run:    python3 -m accubench share --tag {tag}")
+    print(f"     · export to CSV:     python3 -m accubench csv --tag {tag} --out tasks.csv")
+    print(f"     · compare two runs:  python3 -m accubench go --compare --tag NEW")
     print()
 
 

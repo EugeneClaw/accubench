@@ -1,10 +1,10 @@
 # Roadmap
 
-effbench development priorities. Items move up or down as user feedback and soak results dictate.
+accubench development priorities. Items move up or down as user feedback and soak results dictate.
 
 ## Shipped
 
-- **v0.2.1** (2026-08-17) — rename, one-line installers, `effbench go` wizard, hardware-fit verdicts, CSV/share exports, security pass (no real IPs/names/paths anywhere), single-commit clean history
+- **v0.2.1** (2026-08-17) — rename, one-line installers, `accubench go` wizard, hardware-fit verdicts, CSV/share exports, security pass (no real IPs/names/paths anywhere), single-commit clean history
 - **v0.3.0** (2026-08-17) — interactive terminal menu, server auto-detection, all user data under `~/.effbench/`, one-line uninstall, installers auto-launch
 - **v0.4.0** (2026-08-17) — browser front end (localhost web UI: buttons, live progress, hosted reports, past runs + compare, settings), Windows cp1252 crash fix (all file I/O explicit UTF-8)
 - **v0.5.0** (2026-08-17) — measured numbers: median/mean/peak/p10–p90 stats, generation-only (cache-invariant) speed, band sources labelled (warm-cache soak), quick-suite ×0.89 calibration, expected-pass badges from the reference soak, per-fail guidance, radar fix (no fake zero axes), spec-decode accept-rate fix (was always 0% on llama.cpp). Suites and graders untouched.
@@ -16,10 +16,10 @@ effbench development priorities. Items move up or down as user feedback and soak
 ## v0.7 — Findability (next)
 
 - [ ] **Find-servers button** in the web UI: probe localhost ports + LAN subnet (short timeouts), list what answers with its model, one-click select, graceful none-found state with "here's how to start one" hints
-- [ ] `effbench go --compare OLD --against NEW` — compare two recipes in a single command
+- [ ] `accubench go --compare OLD --against NEW` — compare two recipes in a single command
 - [ ] GPU VRAM detection from `/props` or `nvidia-smi` so hardware class comes from actual hardware, not observed t/s alone
 - [ ] More expectations entries — Mistral, DeepSeek, Phi, Gemma bands; Apple Silicon Ultra, DGX Spark classes
-- [ ] Model-optimisation guide: use effbench to sweep spec-decode params (draft depth, accept thresholds, context length) — run×3 + compare per recipe
+- [ ] Model-optimisation guide: use accubench to sweep spec-decode params (draft depth, accept thresholds, context length) — run×3 + compare per recipe
 
 ## v0.7 — Presentation depth
 
@@ -34,12 +34,12 @@ effbench development priorities. Items move up or down as user feedback and soak
 - [ ] `chat` purpose category — currently underrepresented
 - [ ] JSON Schema for the ledger so other tools can consume/produce effbench data
 - [ ] Hub: share runs as Markdown artefacts for CI pipelines
-- [ ] `effbench update` self-update command
+- [ ] `accubench update` self-update command
 
 ## Decisions log
 
 - **Web UI: yes, but private.** v0.4 replaced the "self-contained HTML only" stance with a localhost-only web server (127.0.0.1, stdlib, dies with the terminal). It made the tool genuinely non-technical. The HTML file remains the export/share format.
-- **Terminal still first-class.** `effbench menu`, `go`, `run`, `compare`, `share`, `csv` all remain; the browser UI is additive, never the only path.
+- **Terminal still first-class.** `accubench menu`, `go`, `run`, `compare`, `share`, `csv` all remain; the browser UI is additive, never the only path.
 - **No LLM-as-judge.** Every grader is deterministic. Same answer always gets the same verdict.
 - **Append-only ledger.** Wrong run? Tag it and move on. Comparisons always reproducible from raw records.
 - **Server-agnostic.** Any OpenAI-compatible HTTP server. No special case for llama.cpp in the bench; only the expectations table is calibrated against observed runs.

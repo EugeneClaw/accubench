@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate effbench/expected_pass.json from the reference soak ledger.
+"""Regenerate accubench/expected_pass.json from the reference soak ledger.
 
 Expected-pass = how the REFERENCE rig (RTX 5090, Qwen3.8-27B IQ4_XS, no-think)
 did on each task across the 2026-08-17 soak (253 full cycles + 2 paired quick
@@ -12,7 +12,7 @@ graders are untouched. Rerun if a new suite task is added:
     python3 tools/gen_expected_pass.py [path-to-soak-results.jsonl]
 
 Reads soak-results.jsonl + baseline.jsonl from the pre-rename archive if no
-path is given; writes effbench/expected_pass.json next to the package.
+path is given; writes accubench/expected_pass.json next to the package.
 """
 import json
 import os
@@ -20,7 +20,7 @@ import sys
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ARCHIVE = os.path.expanduser("~/Dev/llama-effbench")
-OUT = os.path.join(HERE, "effbench", "expected_pass.json")
+OUT = os.path.join(HERE, "accubench", "expected_pass.json")
 
 
 def main():

@@ -1,10 +1,10 @@
-"""Cloud backends for effbench: OpenAI-compatible endpoints with an API key.
+"""Cloud backends for accubench: OpenAI-compatible endpoints with an API key.
 
 The key is read from an environment variable at run time and is never stored
-by effbench — config holds only the variable NAME.
+by accubench — config holds only the variable NAME.
 
 Timing model: cloud services deliver tokens in network bursts, so client-side
-per-token timing is unreliable for short outputs. effbench reports wall tok/s
+per-token timing is unreliable for short outputs. accubench reports wall tok/s
 exactly as for local servers, and a generation figure derived from streamed
 chunk arrival times, labelled estimated. Cloud reports carry a `cloud` source
 label so local and cloud numbers are never silently mixed.

@@ -58,7 +58,8 @@ def _detect_server():
     """Probe config/env/common URLs. Returns (url, props) or (None, [])."""
     tried = []
     candidates = []
-    for url in [config.get("url"), os.environ.get("EFFBENCH_URL")] + CANDIDATE_URLS:
+    for url in [config.get("url"), os.environ.get("ACCUBENCH_URL"),
+                os.environ.get("EFFBENCH_URL")] + CANDIDATE_URLS:
         if url and url not in candidates:
             candidates.append(url)
     for url in candidates:
@@ -746,6 +747,8 @@ class Handler(BaseHTTPRequestHandler):
 
 def find_port(start=8765, tries=12):
     import socket
+    # R5: explicitly bound the probe range so a quiet listener can't hide.
+    # 8765..8776 (12 consecutive ports) is the full UI range.
     for port in range(start, start + tries):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             if s.connect_ex(("127.0.0.1", port)) != 0:
@@ -784,7 +787,7 @@ def _print_banner():
 def launch(open_browser=True):
     port = find_port()
     if not port:
-        print("effbench: no free port found (8765-8776) — close something and retry.")
+        print("accubench: no free port found (8765-8776) — close something and retry.")
         return 1
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
 
@@ -804,7 +807,7 @@ def launch(open_browser=True):
         _print_banner()
     except Exception:
         print()
-    print(f"  AccuBench {__version__} (effbench) — web UI")
+    print(f"  AccuBench {__version__} — web UI")
     print(f"  serving at {url}   (Ctrl-C to stop)")
     if open_browser:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()

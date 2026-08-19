@@ -1,4 +1,4 @@
-# effbench — Architecture Brief
+# AccuBench — Architecture Brief
 
 **What:** A deterministic, quality-weighted benchmark for llama.cpp (and any
 OpenAI-compatible) local inference servers.
@@ -31,10 +31,10 @@ self-contained HTML reports you can compare side by side.
 
 ## Layout
 
-    effbench/
+    accubench/
     ├── README.md
     ├── LICENSE                      (MIT)
-    ├── effbench/
+    ├── accubench/
     │   ├── __init__.py
     │   ├── __main__.py              CLI entry (argparse subcommands)
     │   ├── client.py                OpenAI-compatible HTTP client (urllib)
@@ -51,10 +51,10 @@ self-contained HTML reports you can compare side by side.
 
 ## CLI
 
-    python3 -m effbench run    --url http://host:port --suite suites/ [--tag NAME]
-    python3 -m effbench report --ledger results.jsonl --out report.html [--tags A,B]
-    python3 -m effbench compare --ledger results.jsonl --tag A --against B
-    python3 -m effbench validate --suite suites/code.json     # grader self-test
+    python3 -m accubench run    --url http://host:port --suite suites/ [--tag NAME]
+    python3 -m accubench report --ledger results.jsonl --out report.html [--tags A,B]
+    python3 -m accubench compare --ledger results.jsonl --tag A --against B
+    python3 -m accubench validate --suite suites/code.json     # grader self-test
 
 `validate` is the quality gate: it runs every task's grader against a known-good
 and a known-bad output. A grader that passes bad output is a bug, not a feature.

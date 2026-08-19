@@ -15,6 +15,7 @@ import threading
 import time
 from datetime import datetime
 import webbrowser
+from . import keystore
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -100,7 +101,6 @@ def _worker_inner(which):
     if cloud and cloud.get("url") and cloud.get("model"):
         # cloud run: no local server needed
         from .cloud import CloudClient
-        from . import keystore
         key = keystore.load_key(cloud["url"])
         client = CloudClient(cloud["url"], cloud["model"],
                              cloud.get("key_env", ""),
@@ -425,13 +425,6 @@ class Handler(BaseHTTPRequestHandler):
                 out.append(entry)
             self._json({"reports": out})
 
-        elif u.path == "/api/key-status":
-            from . import keystore
-            q = parse_qs(u.query)
-            kurl = (q.get("url") or [""])[0]
-            kmodel = (q.get("model") or [""])[0]
-            self._json({"saved": bool(keystore.load_key(kurl, kmodel))})
-
         elif u.path.startswith("/report/"):
             name = os.path.basename(u.path[len("/report/"):])
             if not name.endswith(".html"):
@@ -458,12 +451,32 @@ class Handler(BaseHTTPRequestHandler):
                     return
             except OSError:
                 pass
-            self._file(path, "text/html; charset=utf-8")
+            # HTML missing → regenerate from ledger (reports are derived data)
+            if not os.path.exists(path):
+                tag = name[:-5]
+                if any(r.get("tag") == tag for r in load_ledger(LEDGER)):
+                    try:
+                        wizard._make_report(tag, LEDGER, {}, path)
+                    except Exception:
+                        pass
+            if os.path.exists(path):
+                self._file(path, "text/html; charset=utf-8")
+            else:
+                body = ("<!doctype html><meta charset=utf-8><body style=\"background:#07090D;"
+                        "color:#C3CDD9;font:15px/1.6 -apple-system,sans-serif;padding:48px\">"
+                        "<h2 style=\"color:#E8EDF4\">report not found</h2>"
+                        "<p>No HTML for this run and no ledger records to rebuild it from "
+                        "— the run was removed or never finished writing.</p></body>")
+                self.send_response(404)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body.encode())
+            return
 
         elif u.path == "/api/cloud-models":
             from .cloud import CloudClient
             from .client import is_cloud_url, normalise_url
-            from . import keystore
             q = parse_qs(u.query)
             curl = normalise_url((q.get("url") or [""])[0])
             model = (q.get("model") or [""])[0].strip()
@@ -492,7 +505,6 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"saved": bool(keystore.load_key(kurl))})
 
         elif u.path == "/api/keys":
-            from . import keystore
             idents = keystore.list_idents()
             self._json({"idents": idents})
 
@@ -545,7 +557,6 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             from .cloud import CloudClient
             from .client import is_cloud_url, normalise_url
-            from . import keystore
             curl = normalise_url(body.get("url") or "")
             model = (body.get("model") or "").strip()
             kenv = (body.get("key_env") or "").strip()
@@ -575,7 +586,6 @@ class Handler(BaseHTTPRequestHandler):
             return
         elif u.path == "/api/key-remove":
             body = self._body()
-            from . import keystore
             from .client import normalise_url
             url = normalise_url(body.get("url") or "")
             model = (body.get("model") or "").strip()
@@ -586,7 +596,6 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": gone})
 
         elif u.path == "/api/key-wipe":
-            from . import keystore
             n = keystore.wipe()
             self._json({"ok": True, "removed": n})
 
@@ -672,8 +681,7 @@ class Handler(BaseHTTPRequestHandler):
             if not url:
                 self._json({"ok": False, "error": "url required"}, 400)
                 return
-            from . import keystore
-            key = keystore.load_key(url)
+                key = keystore.load_key(url)
             if key:
                 self._json({"ok": True, "key": key, "len": len(key)})
             else:
@@ -697,7 +705,6 @@ class Handler(BaseHTTPRequestHandler):
                     if k == "url" and not (v or "").strip():
                         continue  # blank URL never overwrites a saved one
                     config.set_value(k, v)
-            from . import keystore
             if isinstance(cloud, dict) and cloud.get("url") and cloud.get("model"):
                 if pasted:
                     keystore.save_key(cloud["url"], cloud["model"], pasted)

@@ -43,7 +43,9 @@ Write-Host "  -> installing to $Prefix"
 if (Test-Path (Join-Path $Src ".git")) {
   Write-Host "  -> updating existing install..."
   Push-Location $Src
-  git pull --quiet
+  git fetch --quiet origin
+  git reset --hard origin/main --quiet
+  git clean -fdq
   Pop-Location
 } else {
   Write-Host "  -> cloning repo..."

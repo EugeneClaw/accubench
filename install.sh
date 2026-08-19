@@ -39,7 +39,7 @@ echo "  → installing to $BIN and $SRC"
 # 3. Clone or update the repo.
 if [ -d "$SRC/.git" ]; then
   echo "  → updating existing install..."
-  (cd "$SRC" && git pull --quiet)
+  (cd "$SRC" && git fetch --quiet origin && git reset --hard origin/main --quiet && git clean -fdq)
 else
   echo "  → cloning repo..."
   rm -rf "$SRC"
